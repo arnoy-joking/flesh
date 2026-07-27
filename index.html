@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -365,6 +364,37 @@
   .missed-item .q{ color:var(--ink-bright); margin-bottom:3px; }
   .missed-item .a{ color:var(--emerald-bright); font-size:12px; }
 
+  /* ---------- Review mode ---------- */
+  .review-wrap{ flex:1; display:flex; flex-direction:column; padding:0 16px 50px; overflow-y:auto; }
+  .review-toolbar{ display:flex; align-items:center; gap:10px; padding:10px 0 14px; flex-wrap:wrap; position:sticky; top:0; background:var(--ink-soft); z-index:2; border-bottom:1px solid var(--ink-line); }
+  .review-search{ background:var(--ink); border:1px solid var(--ink-line); border-radius:8px; color:var(--ink-bright); font-size:12px; padding:8px 12px; width:min(220px,40vw); outline:none; font-family:var(--font-body); }
+  .review-search:focus{ border-color:var(--emerald); }
+  .review-search::placeholder{ color:var(--ink-muted); }
+  .review-tag-select{ background:var(--ink); border:1px solid var(--ink-line); border-radius:8px; color:var(--ink-bright); font-size:12px; padding:8px 12px; outline:none; cursor:pointer; }
+  .review-stats{ font-family:var(--font-mono); font-size:10px; color:var(--ink-muted); letter-spacing:.06em; }
+  .review-list{ display:flex; flex-direction:column; gap:6px; }
+  .review-empty{ text-align:center; padding:40px 16px; color:var(--ink-muted); font-size:13px; }
+  .review-row{ display:flex; align-items:flex-start; gap:12px; padding:10px 12px; background:var(--ink-soft); border:1px solid var(--ink-line); border-radius:10px; transition:border-color .12s var(--ease); }
+  .review-row:hover{ border-color:rgba(255,255,255,.16); }
+  .review-row.mcq{ border-left:3px solid var(--violet); }
+  .review-row.basic{ border-left:3px solid var(--emerald); }
+  .review-num{ font-family:var(--font-mono); font-size:10px; color:var(--ink-muted); min-width:22px; text-align:right; padding-top:2px; flex-shrink:0; }
+  .review-body{ flex:1; min-width:0; }
+  .review-q{ font-size:13px; color:var(--ink-bright); line-height:1.5; font-weight:500; display:flex; align-items:flex-start; gap:6px; flex-wrap:wrap; }
+  .review-a{ font-size:12px; color:var(--ink-muted); line-height:1.5; margin-top:4px; }
+  .review-type-badge{ font-family:var(--font-mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:2px 6px; border-radius:4px; background:var(--ink); border:1px solid var(--ink-line); color:var(--ink-muted); }
+  .review-grade-badge{ font-family:var(--font-mono); font-size:9px; letter-spacing:.04em; padding:2px 6px; border-radius:4px; font-weight:600; }
+  .review-grade-badge.good{ color:var(--emerald-bright); background:rgba(47,111,82,.18); }
+  .review-grade-badge.hard{ color:var(--amber); background:rgba(201,138,44,.18); }
+  .review-grade-badge.forgot{ color:#e08787; background:rgba(178,76,76,.18); }
+  .review-grade-badge.none{ color:var(--ink-muted); background:var(--ink); border:1px dashed var(--ink-line); }
+  .review-tag-badge{ font-size:9px; padding:2px 7px; border-radius:4px; color:#fff; font-weight:600; letter-spacing:.02em; }
+  .mcq-opt-inline{ display:inline-block; font-size:12px; color:var(--ink-muted); margin-right:4px; padding:1px 4px; }
+  .mcq-opt-inline.correct{ color:var(--emerald-bright); background:rgba(47,111,82,.12); border-radius:3px; font-weight:600; }
+  .review-explanation{ font-size:11px; color:var(--azure); margin-top:6px; padding-top:6px; border-top:1px dashed var(--ink-line); }
+  .review-hidden-answer{ color:var(--ink-muted); font-style:italic; }
+  .review-btn{ color:var(--violet) !important; border-color:var(--violet) !important; }
+
   /* ---------- Modal ---------- */
   .modal-backdrop{ position:fixed; inset:0; background:rgba(10,12,16,.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50; opacity:0; pointer-events:none; transition:opacity .2s var(--ease); padding:12px; }
   .modal-backdrop.open{ opacity:1; pointer-events:auto; }
@@ -447,6 +477,12 @@
 
     .deck-card-actions{ gap:4px; }
     .deck-card-actions .btn{ padding:6px 8px; font-size:11px; }
+
+    .review-row{ padding:8px 10px; gap:8px; }
+    .review-q{ font-size:12px; }
+    .review-a{ font-size:11px; }
+    .review-toolbar{ gap:6px; padding:8px 0 10px; }
+    .review-search{ width:min(160px,38vw); padding:6px 10px; }
   }
 
   /* ========== Touch: show larger tap targets ========== */
@@ -516,6 +552,11 @@
   <!-- SUMMARY VIEW (round complete + quiz results share this shell) -->
   <div class="view" id="view-summary" style="display:none;">
     <div class="summary-wrap"><div class="summary-card" id="summaryContent"></div></div>
+  </div>
+
+  <!-- REVIEW VIEW (all Q&A in rows) -->
+  <div class="view" id="view-review" style="display:none;">
+    <div class="review-wrap" id="reviewWrap"></div>
   </div>
 
   <!-- Import Modal -->
@@ -960,6 +1001,7 @@
     $('view-library').style.display = v==='library' ? 'flex' : 'none';
     $('view-session').style.display = v==='session' ? 'flex' : 'none';
     $('view-summary').style.display = v==='summary' ? 'flex' : 'none';
+    $('view-review').style.display = v==='review' ? 'flex' : 'none';
   }
 
   function renderTopbar(){
@@ -996,6 +1038,11 @@
       titleEl.textContent = activeDeck.title;
       subEl.textContent = session.kind==='quiz' ? 'Quiz results' : 'Round complete';
       right.innerHTML = themeToggleHTML();
+    } else if(view==='review'){
+      backBtn.hidden = false;
+      titleEl.textContent = activeDeck.title;
+      subEl.textContent = 'Review all cards';
+      right.innerHTML = `<button class="btn primary" id="studyFromReviewBtn">Study this deck</button>` + themeToggleHTML();
     }
 
     backBtn.onclick = goLibrary;
@@ -1008,6 +1055,11 @@
       session.order = shuffleArray(session.order);
       session.pos = 0;
       renderSessionCard('fwd');
+    });
+    const studyFromReviewBtn = $('studyFromReviewBtn');
+    if(studyFromReviewBtn) studyFromReviewBtn.addEventListener('click', () => {
+      const allIdx = activeDeck.cards.map((_,i)=>i);
+      startStudySession(allIdx, 'full');
     });
   }
 
@@ -1061,10 +1113,12 @@
     library.forEach(d => {
       const studyBtn = wrap.querySelector(`[data-study="${d.id}"]`);
       const quizBtn = wrap.querySelector(`[data-quiz="${d.id}"]`);
+      const reviewBtn = wrap.querySelector(`[data-review="${d.id}"]`);
       const exportBtn = wrap.querySelector(`[data-export="${d.id}"]`);
       const deleteBtn = wrap.querySelector(`[data-delete="${d.id}"]`);
       if(studyBtn) studyBtn.addEventListener('click', () => openDeck(d.id, 'study'));
       if(quizBtn) quizBtn.addEventListener('click', () => openDeck(d.id, 'quiz'));
+      if(reviewBtn) reviewBtn.addEventListener('click', () => openDeck(d.id, 'review'));
       if(exportBtn) exportBtn.addEventListener('click', () => exportDeck(d.id));
       if(deleteBtn) deleteBtn.addEventListener('click', () => requestDeleteDeck(d.id, d.title));
     });
@@ -1081,6 +1135,7 @@
         <div class="deck-card-actions">
           <button class="btn primary" data-study="${d.id}">Study</button>
           <button class="btn" data-quiz="${d.id}">Quiz</button>
+          <button class="btn review-btn" data-review="${d.id}">Review</button>
           <button class="btn icon-only" data-export="${d.id}" title="Export JSON">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
@@ -1144,6 +1199,7 @@
     progressMap = prog.grades || {};
     const allIdx = activeDeck.cards.map((_,i)=>i);
     if(mode === 'quiz') startQuizSession(allIdx);
+    else if(mode === 'review') startReviewSession();
     else startStudySession(allIdx, 'full');
   }
 
@@ -1204,6 +1260,106 @@
     session.timerId = setInterval(tickQuizTimer, 1000);
     updateQuizTimerDisplay();
   }
+  /* ============================================================
+     REVIEW MODE (all Q&A in rows)
+  ============================================================ */
+  function startReviewSession(){
+    session = null; // no active session in review mode
+    setView('review');
+    renderReview();
+    renderTopbar();
+  }
+
+  let reviewSearchTerm = '';
+  let reviewTagFilter = '';
+  let reviewShowAnswers = true;
+
+  function renderReview(){
+    const wrap = $('reviewWrap');
+    const cards = activeDeck.cards;
+    const allTags = [...new Set(cards.map(c => c.tag).filter(Boolean))];
+
+    // Filter cards
+    let filtered = cards.map((c,i) => ({ ...c, idx: i }));
+    if(reviewSearchTerm){
+      const q = reviewSearchTerm.toLowerCase();
+      filtered = filtered.filter(c => {
+        const text = c.type === 'mcq' ? c.question + ' ' + c.options.join(' ') + ' ' + (c.explanation||'')
+                     : c.front + ' ' + c.back;
+        return text.toLowerCase().includes(q);
+      });
+    }
+    if(reviewTagFilter){
+      filtered = filtered.filter(c => c.tag === reviewTagFilter);
+    }
+
+    // Build rows
+    const gradeMap = progressMap;
+    const rows = filtered.map(c => {
+      const grade = gradeMap[c.idx];
+      const gradeBadge = grade ? `<span class="review-grade-badge ${grade}">${grade === 'good' ? '✓ Good' : grade === 'hard' ? '◐ Hard' : '✗ Forgot'}</span>` : '<span class="review-grade-badge none">—</span>';
+      const tagBadge = c.tag ? `<span class="review-tag-badge" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '';
+
+      if(c.type === 'mcq'){
+        const letters = ['A','B','C','D','E','F'];
+        const optionsHtml = c.options.map((o,i) => {
+          const isCorrect = i === c.answer;
+          return `<span class="mcq-opt-inline ${isCorrect ? 'correct' : ''}">${letters[i]||i+1}. ${formatText(o)}</span>`;
+        }).join('');
+        const explanationHtml = c.explanation ? `<div class="review-explanation">${formatText(c.explanation)}</div>` : '';
+        return `
+          <div class="review-row mcq" data-idx="${c.idx}">
+            <div class="review-num">${c.idx+1}</div>
+            <div class="review-body">
+              <div class="review-q">${tagBadge}${gradeBadge}<span class="review-type-badge">MCQ</span> ${formatText(c.question)}</div>
+              <div class="review-a">${optionsHtml}</div>
+              ${reviewShowAnswers ? explanationHtml : ''}
+            </div>
+          </div>`;
+      } else {
+        const visualNote = (c.chart || c.plot || c.svg) ? '<span class="review-type-badge">visual</span>' : '';
+        return `
+          <div class="review-row basic" data-idx="${c.idx}">
+            <div class="review-num">${c.idx+1}</div>
+            <div class="review-body">
+              <div class="review-q">${tagBadge}${gradeBadge}${visualNote} ${formatText(c.front)}</div>
+              <div class="review-a">${reviewShowAnswers ? formatText(c.back) : '<span class="review-hidden-answer">Hidden — click "Show answers"</span>'}</div>
+            </div>
+          </div>`;
+      }
+    }).join('');
+
+    wrap.innerHTML = `
+      <div class="review-toolbar">
+        <input type="text" id="reviewSearch" placeholder="Search cards…" value="${escapeHtml(reviewSearchTerm)}" class="review-search">
+        <select id="reviewTagSelect" class="review-tag-select">
+          <option value="">All tags</option>
+          ${allTags.map(t => `<option value="${escapeHtml(t)}" ${reviewTagFilter===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
+        </select>
+        <button class="btn ghost" id="reviewToggleAnswers">${reviewShowAnswers ? 'Hide answers' : 'Show answers'}</button>
+        <div class="review-stats">${filtered.length} of ${cards.length} cards</div>
+      </div>
+      <div class="review-list">${rows || '<div class="review-empty">No cards match your search.</div>'}</div>`;
+
+    // Event listeners
+    const searchInput = $('reviewSearch');
+    if(searchInput){
+      searchInput.addEventListener('input', (e) => {
+        reviewSearchTerm = e.target.value;
+        renderReview();
+        const newInput = $('reviewSearch');
+        if(newInput){ newInput.focus(); newInput.setSelectionRange(reviewSearchTerm.length, reviewSearchTerm.length); }
+      });
+    }
+    const tagSelect = $('reviewTagSelect');
+    if(tagSelect) tagSelect.addEventListener('change', (e) => { reviewTagFilter = e.target.value; renderReview(); });
+    const toggleBtn = $('reviewToggleAnswers');
+    if(toggleBtn) toggleBtn.addEventListener('click', () => { reviewShowAnswers = !reviewShowAnswers; renderReview(); });
+
+    // Render math in review rows
+    wrap.querySelectorAll('.review-q, .review-a, .mcq-opt-inline, .review-explanation').forEach(el => renderMath(el));
+  }
+
   function tickQuizTimer(){
     if(!session || session.kind !== 'quiz') return;
     session.remaining--;
@@ -1288,9 +1444,12 @@
     buildGradeRow(idx, c.type);
 
     if(c.type === 'mcq'){
-      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>1-${Math.min(c.options.length,6)}</kbd> choose &nbsp;·&nbsp; <kbd>space</kbd> flip for explanation` + (session.kind==='study' ? ` &nbsp;·&nbsp; <kbd>S</kbd> shuffle` : '');
+      const extra = alreadyAnswered && session.kind==='study' ? ' &nbsp;·&nbsp; <kbd>G</kbd> good <kbd>H</kbd> hard <kbd>F</kbd> forgot' : alreadyAnswered && session.kind==='quiz' ? ' &nbsp;·&nbsp; <kbd>C</kbd> correct <kbd>I</kbd> incorrect' : '';
+      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>1-${Math.min(c.options.length,6)}</kbd> choose &nbsp;·&nbsp; <kbd>space</kbd> flip for explanation${extra}` + (session.kind==='study' ? ` &nbsp;·&nbsp; <kbd>S</kbd> shuffle` : '');
     } else {
-      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>space</kbd> flip &nbsp;·&nbsp; <kbd>S</kbd> shuffle`;
+      const graded = $('gradeRow').classList.contains('show');
+      const gradeHint = graded && session.kind==='study' ? ' &nbsp;·&nbsp; <kbd>G</kbd> good <kbd>H</kbd> hard <kbd>F</kbd> forgot' : graded && session.kind==='quiz' ? ' &nbsp;·&nbsp; <kbd>C</kbd> correct <kbd>I</kbd> incorrect' : '';
+      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>space</kbd> flip${gradeHint} &nbsp;·&nbsp; <kbd>S</kbd> shuffle`;
     }
     if(session.kind === 'quiz') kbdHint.innerHTML = kbdHint.innerHTML.replace(/&nbsp;·&nbsp; <kbd>S<\/kbd> shuffle/,'');
 
@@ -1586,6 +1745,25 @@
 
   document.addEventListener('keydown', (e) => {
     if($('modalBackdrop').classList.contains('open') || $('confirmBackdrop').classList.contains('open')) return;
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // Grade shortcuts — work in session view after card is graded/answered
+    if(view === 'session' && session){
+      const idx = session.order[session.pos];
+      const c = activeDeck.cards[idx];
+      const k = e.key.toLowerCase();
+      const isGradeable = (c.type === 'basic' && $('gradeRow').classList.contains('show')) ||
+                          (c.type === 'mcq' && session.mcqAnswers[idx] !== undefined);
+      if(isGradeable && session.kind === 'study'){
+        if(k === 'g'){ if(c.type==='mcq') gradeMcq(idx, 'good'); else gradeCard(idx, 'good'); return; }
+        if(k === 'h'){ if(c.type==='mcq') gradeMcq(idx, 'hard'); else gradeCard(idx, 'hard'); return; }
+        if(k === 'f'){ if(c.type==='mcq') gradeMcq(idx, 'forgot'); else gradeCard(idx, 'forgot'); return; }
+      } else if(isGradeable && session.kind === 'quiz'){
+        if(k === 'c' || k === 'g'){ if(c.type==='mcq') gradeMcq(idx, 'good'); else gradeCard(idx, 'good'); return; }
+        if(k === 'i' || k === 'f'){ if(c.type==='mcq') gradeMcq(idx, 'forgot'); else gradeCard(idx, 'forgot'); return; }
+      }
+    }
+
     if(view !== 'session' || !session) return;
     if(e.key === 'ArrowRight'){ goNext(); }
     else if(e.key === 'ArrowLeft'){ goPrev(); }
