@@ -59,6 +59,7 @@
   }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  [hidden]{ display:none !important; }
   html,body{height:100%;}
   body{
     margin:0;
@@ -198,6 +199,61 @@
   .empty-state p{ margin:0; font-size:13px; line-height:1.6; }
   .empty-actions{ display:flex; gap:8px; margin-top:4px; flex-wrap:wrap; justify-content:center; }
 
+
+  /* ---------- Study sheet: all questions + answers in rows ---------- */
+  .study-sheet-wrap{ flex:1; width:min(1120px,100%); margin:0 auto; padding:22px 16px 56px; }
+  .sheet-hero{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    margin-bottom:14px; padding:16px; border:1px solid var(--ink-line); border-radius:14px;
+    background:linear-gradient(135deg, rgba(47,111,82,.16), rgba(201,138,44,.08)), var(--ink-soft);
+  }
+  .sheet-hero h2{ font-family:var(--font-display); font-size:22px; margin:0 0 4px; font-weight:600; }
+  .sheet-hero p{ margin:0; color:var(--ink-muted); font-size:12.5px; line-height:1.55; }
+  .sheet-toolbar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .sheet-search{
+    flex:1; min-width:min(280px,100%); min-height:38px; border-radius:10px; border:1px solid var(--ink-line);
+    background:var(--ink-soft); color:var(--ink-bright); padding:9px 12px; font:13px var(--font-body);
+  }
+  .sheet-search:focus{ outline:none; border-color:var(--amber); }
+  .sheet-count{ font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); margin-left:auto; }
+  .sheet-rows{ display:flex; flex-direction:column; gap:10px; }
+  .sheet-row{
+    border:1px solid var(--ink-line); border-radius:14px; background:var(--ink-soft); overflow:hidden;
+    box-shadow:0 10px 26px -22px var(--shadow-strong);
+  }
+  .sheet-row-top{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 12px;
+    border-bottom:1px solid var(--ink-line); background:rgba(255,255,255,.025);
+  }
+  .sheet-num{ font-family:var(--font-mono); color:var(--ink-muted); font-size:10px; letter-spacing:.08em; }
+  .sheet-chip{ color:#fff; border-radius:999px; padding:3px 8px; font-size:9px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.07em; font-weight:700; }
+  .sheet-type, .sheet-progress{
+    border:1px solid var(--ink-line); border-radius:999px; padding:3px 8px; font-family:var(--font-mono);
+    font-size:9.5px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.06em;
+  }
+  .sheet-progress.good{ color:var(--emerald-bright); border-color:rgba(47,111,82,.45); }
+  .sheet-progress.hard{ color:var(--amber); border-color:rgba(201,138,44,.5); }
+  .sheet-progress.forgot, .sheet-progress.skipped{ color:#e08787; border-color:rgba(178,76,76,.5); }
+  .sheet-grid{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .sheet-col{ padding:14px; min-width:0; }
+  .sheet-col.answer{ border-left:1px solid var(--ink-line); background:rgba(47,111,82,.045); }
+  .sheet-col-title{ font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:8px; }
+  .sheet-text{ font-size:13.5px; line-height:1.65; color:var(--ink-bright); overflow-wrap:anywhere; }
+  .sheet-text code{ font-family:var(--font-mono); background:rgba(255,255,255,.06); padding:1px 5px; border-radius:4px; font-size:.86em; }
+  .sheet-answer{ color:var(--emerald-bright); }
+  .sheet-options{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .sheet-option{ display:flex; gap:8px; align-items:flex-start; border:1px solid var(--ink-line); border-radius:9px; padding:7px 9px; color:var(--ink-muted); font-size:12.5px; line-height:1.45; }
+  .sheet-option.correct{ color:var(--ink-bright); border-color:rgba(47,111,82,.55); background:rgba(47,111,82,.11); }
+  .sheet-option-letter{ font-family:var(--font-mono); color:var(--amber); font-weight:700; min-width:18px; }
+  .sheet-explanation{ margin-top:10px; padding:10px 12px; border-radius:9px; background:rgba(201,138,44,.10); border:1px solid rgba(201,138,44,.28); font-size:12.5px; line-height:1.55; }
+  .sheet-svg{ margin-top:10px; border:1px solid var(--ink-line); border-radius:10px; padding:8px; background:rgba(255,255,255,.04); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .sheet-svg svg{ max-width:100%; max-height:160px; width:auto; height:auto; }
+  .sheet-visual-note{ margin-top:8px; font-family:var(--font-mono); color:var(--ink-muted); font-size:10px; border:1px dashed var(--ink-line); border-radius:8px; padding:7px 9px; }
+  .sheet-answer-hidden{ display:none; color:var(--ink-muted); font-family:var(--font-mono); font-size:11px; padding:8px 10px; border:1px dashed var(--ink-line); border-radius:8px; }
+  .sheet-rows.answers-hidden .sheet-a-body{ display:none; }
+  .sheet-rows.answers-hidden .sheet-answer-hidden{ display:block; }
+  .sheet-empty{ text-align:center; color:var(--ink-muted); padding:26px; border:1px dashed var(--ink-line); border-radius:14px; }
+
   /* ---------- Session stage (study + quiz) ---------- */
   .stage{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:clamp(8px,2vw,16px) clamp(6px,2vw,12px) 8px; position:relative; }
 
@@ -315,6 +371,12 @@
   .grade-btn.hard:hover{ background:rgba(201,138,44,.15); }
   .grade-btn.forgot{ color:#e08787; border-color:var(--brick); }
   .grade-btn.forgot:hover{ background:rgba(178,76,76,.15); }
+  .grade-key{
+    display:inline-flex; align-items:center; justify-content:center;
+    margin-left:5px; padding:1px 5px; border-radius:999px;
+    border:1px solid currentColor; font-family:var(--font-mono);
+    font-size:.82em; line-height:1; opacity:.78;
+  }
 
   /* Controls */
   .controls{ display:flex; align-items:center; gap:clamp(6px,1.5vw,10px); margin:clamp(8px,2vw,16px) 0 6px; }
@@ -362,37 +424,6 @@
   .missed-item{ background:var(--ink-soft); border:1px solid var(--ink-line); border-radius:10px; padding:10px 12px; font-size:12px; }
   .missed-item .q{ color:var(--ink-bright); margin-bottom:3px; }
   .missed-item .a{ color:var(--emerald-bright); font-size:12px; }
-
-  /* ---------- Review mode ---------- */
-  .review-wrap{ flex:1; display:flex; flex-direction:column; padding:0 16px 50px; overflow-y:auto; }
-  .review-toolbar{ display:flex; align-items:center; gap:10px; padding:10px 0 14px; flex-wrap:wrap; position:sticky; top:0; background:var(--ink-soft); z-index:2; border-bottom:1px solid var(--ink-line); }
-  .review-search{ background:var(--ink); border:1px solid var(--ink-line); border-radius:8px; color:var(--ink-bright); font-size:12px; padding:8px 12px; width:min(220px,40vw); outline:none; font-family:var(--font-body); }
-  .review-search:focus{ border-color:var(--emerald); }
-  .review-search::placeholder{ color:var(--ink-muted); }
-  .review-tag-select{ background:var(--ink); border:1px solid var(--ink-line); border-radius:8px; color:var(--ink-bright); font-size:12px; padding:8px 12px; outline:none; cursor:pointer; }
-  .review-stats{ font-family:var(--font-mono); font-size:10px; color:var(--ink-muted); letter-spacing:.06em; }
-  .review-list{ display:flex; flex-direction:column; gap:6px; }
-  .review-empty{ text-align:center; padding:40px 16px; color:var(--ink-muted); font-size:13px; }
-  .review-row{ display:flex; align-items:flex-start; gap:12px; padding:10px 12px; background:var(--ink-soft); border:1px solid var(--ink-line); border-radius:10px; transition:border-color .12s var(--ease); }
-  .review-row:hover{ border-color:rgba(255,255,255,.16); }
-  .review-row.mcq{ border-left:3px solid var(--violet); }
-  .review-row.basic{ border-left:3px solid var(--emerald); }
-  .review-num{ font-family:var(--font-mono); font-size:10px; color:var(--ink-muted); min-width:22px; text-align:right; padding-top:2px; flex-shrink:0; }
-  .review-body{ flex:1; min-width:0; }
-  .review-q{ font-size:13px; color:var(--ink-bright); line-height:1.5; font-weight:500; display:flex; align-items:flex-start; gap:6px; flex-wrap:wrap; }
-  .review-a{ font-size:12px; color:var(--ink-muted); line-height:1.5; margin-top:4px; }
-  .review-type-badge{ font-family:var(--font-mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:2px 6px; border-radius:4px; background:var(--ink); border:1px solid var(--ink-line); color:var(--ink-muted); }
-  .review-grade-badge{ font-family:var(--font-mono); font-size:9px; letter-spacing:.04em; padding:2px 6px; border-radius:4px; font-weight:600; }
-  .review-grade-badge.good{ color:var(--emerald-bright); background:rgba(47,111,82,.18); }
-  .review-grade-badge.hard{ color:var(--amber); background:rgba(201,138,44,.18); }
-  .review-grade-badge.forgot{ color:#e08787; background:rgba(178,76,76,.18); }
-  .review-grade-badge.none{ color:var(--ink-muted); background:var(--ink); border:1px dashed var(--ink-line); }
-  .review-tag-badge{ font-size:9px; padding:2px 7px; border-radius:4px; color:#fff; font-weight:600; letter-spacing:.02em; }
-  .mcq-opt-inline{ display:inline-block; font-size:12px; color:var(--ink-muted); margin-right:4px; padding:1px 4px; }
-  .mcq-opt-inline.correct{ color:var(--emerald-bright); background:rgba(47,111,82,.12); border-radius:3px; font-weight:600; }
-  .review-explanation{ font-size:11px; color:var(--azure); margin-top:6px; padding-top:6px; border-top:1px dashed var(--ink-line); }
-  .review-hidden-answer{ color:var(--ink-muted); font-style:italic; }
-  .review-btn{ color:var(--violet) !important; border-color:var(--violet) !important; }
 
   /* ---------- Modal ---------- */
   .modal-backdrop{ position:fixed; inset:0; background:rgba(10,12,16,.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50; opacity:0; pointer-events:none; transition:opacity .2s var(--ease); padding:12px; }
@@ -449,6 +480,13 @@
     .mcq-option .tab{ font-size:10px; width:20px; height:20px; }
     .flip-hint{ font-size:8px; }
 
+    .study-sheet-wrap{ padding:14px 12px 40px; }
+    .sheet-hero{ padding:14px; }
+    .sheet-hero h2{ font-size:20px; }
+    .sheet-grid{ grid-template-columns:1fr; }
+    .sheet-col.answer{ border-left:none; border-top:1px solid var(--ink-line); }
+    .sheet-toolbar .btn{ flex:1; justify-content:center; }
+
     .library-wrap{ padding:16px 12px 40px; }
     .deck-grid{ grid-template-columns:1fr; gap:10px; }
     .deck-card{ padding:14px; }
@@ -476,12 +514,6 @@
 
     .deck-card-actions{ gap:4px; }
     .deck-card-actions .btn{ padding:6px 8px; font-size:11px; }
-
-    .review-row{ padding:8px 10px; gap:8px; }
-    .review-q{ font-size:12px; }
-    .review-a{ font-size:11px; }
-    .review-toolbar{ gap:6px; padding:8px 0 10px; }
-    .review-search{ width:min(160px,38vw); padding:6px 10px; }
   }
 
   /* ========== Touch: show larger tap targets ========== */
@@ -521,6 +553,25 @@
     <div class="library-wrap" id="libraryWrap"></div>
   </div>
 
+  <!-- STUDY SHEET VIEW (all questions + answers in rows) -->
+  <div class="view" id="view-sheet" style="display:none;">
+    <div class="study-sheet-wrap">
+      <div class="sheet-hero">
+        <div>
+          <h2 id="sheetTitle">Study rows</h2>
+          <p id="sheetMeta">Read every question beside its answer, then jump into flashcards when ready.</p>
+        </div>
+        <div class="sheet-count" id="sheetCount"></div>
+      </div>
+      <div class="sheet-toolbar">
+        <input class="sheet-search" id="sheetSearch" type="search" placeholder="Search questions, answers, tags, options…" autocomplete="off">
+        <button class="btn" id="sheetToggleAnswers">Hide answers</button>
+        <button class="btn primary" id="sheetStartCards">Start flashcards</button>
+      </div>
+      <div class="sheet-rows" id="sheetRows"></div>
+    </div>
+  </div>
+
   <!-- SESSION VIEW (study + quiz share this shell) -->
   <div class="view" id="view-session" style="display:none;">
     <div class="stage">
@@ -551,11 +602,6 @@
   <!-- SUMMARY VIEW (round complete + quiz results share this shell) -->
   <div class="view" id="view-summary" style="display:none;">
     <div class="summary-wrap"><div class="summary-card" id="summaryContent"></div></div>
-  </div>
-
-  <!-- REVIEW VIEW (all Q&A in rows) -->
-  <div class="view" id="view-review" style="display:none;">
-    <div class="review-wrap" id="reviewWrap"></div>
   </div>
 
   <!-- Import Modal -->
@@ -956,11 +1002,12 @@
   ============================================================ */
   let theme = 'dark';
   let library = [];        // [{id,title,folder,count,createdAt,masteryPct}]
-  let view = 'library';    // 'library' | 'session' | 'summary'
+  let view = 'library';    // 'library' | 'sheet' | 'session' | 'summary'
   let activeDeck = null;   // {id,title,folder,cards}
   let progressMap = {};    // cardIndex(string) -> grade, persisted per deck
   let session = null;      // shared study/quiz session
   let currentVisual = null; // {type:'plot'|'chart', spec, canvas}
+  let sheetAnswersVisible = true;
   let pendingDeleteId = null;
 
   /* ============================================================
@@ -998,9 +1045,9 @@
   function setView(v){
     view = v;
     $('view-library').style.display = v==='library' ? 'flex' : 'none';
+    $('view-sheet').style.display = v==='sheet' ? 'flex' : 'none';
     $('view-session').style.display = v==='session' ? 'flex' : 'none';
     $('view-summary').style.display = v==='summary' ? 'flex' : 'none';
-    $('view-review').style.display = v==='review' ? 'flex' : 'none';
   }
 
   function renderTopbar(){
@@ -1016,6 +1063,12 @@
       titleEl.textContent = 'Flësh';
       subEl.textContent = library.length ? `${library.length} deck${library.length===1?'':'s'} in your library` : 'Import your first deck to begin';
       right.innerHTML = `<button class="btn primary" id="newDeckBtn">+ New deck</button>` + themeToggleHTML();
+    } else if(view==='sheet'){
+      backBtn.hidden = false;
+      titleEl.textContent = activeDeck.title;
+      subEl.textContent = 'Study rows — questions and answers side by side';
+      center.innerHTML = `<div class="stats"><div class="stat"><b>${activeDeck.cards.length}</b>&nbsp;rows</div></div>`;
+      right.innerHTML = `<button class="btn primary" id="topFlashcardsBtn">Flashcards</button>` + themeToggleHTML();
     } else if(view==='session'){
       backBtn.hidden = false;
       titleEl.textContent = activeDeck.title;
@@ -1037,11 +1090,6 @@
       titleEl.textContent = activeDeck.title;
       subEl.textContent = session.kind==='quiz' ? 'Quiz results' : 'Round complete';
       right.innerHTML = themeToggleHTML();
-    } else if(view==='review'){
-      backBtn.hidden = false;
-      titleEl.textContent = activeDeck.title;
-      subEl.textContent = 'Review all cards';
-      right.innerHTML = `<button class="btn primary" id="studyFromReviewBtn">Study this deck</button>` + themeToggleHTML();
     }
 
     backBtn.onclick = goLibrary;
@@ -1055,11 +1103,8 @@
       session.pos = 0;
       renderSessionCard('fwd');
     });
-    const studyFromReviewBtn = $('studyFromReviewBtn');
-    if(studyFromReviewBtn) studyFromReviewBtn.addEventListener('click', () => {
-      const allIdx = activeDeck.cards.map((_,i)=>i);
-      startStudySession(allIdx, 'full');
-    });
+    const topFlashcardsBtn = $('topFlashcardsBtn');
+    if(topFlashcardsBtn) topFlashcardsBtn.addEventListener('click', () => startStudySession(activeDeck.cards.map((_,i)=>i), 'full'));
   }
 
   function goLibrary(){
@@ -1111,13 +1156,13 @@
     `).join('');
     library.forEach(d => {
       const studyBtn = wrap.querySelector(`[data-study="${d.id}"]`);
+      const sheetBtn = wrap.querySelector(`[data-sheet="${d.id}"]`);
       const quizBtn = wrap.querySelector(`[data-quiz="${d.id}"]`);
-      const reviewBtn = wrap.querySelector(`[data-review="${d.id}"]`);
       const exportBtn = wrap.querySelector(`[data-export="${d.id}"]`);
       const deleteBtn = wrap.querySelector(`[data-delete="${d.id}"]`);
       if(studyBtn) studyBtn.addEventListener('click', () => openDeck(d.id, 'study'));
+      if(sheetBtn) sheetBtn.addEventListener('click', () => openDeck(d.id, 'sheet'));
       if(quizBtn) quizBtn.addEventListener('click', () => openDeck(d.id, 'quiz'));
-      if(reviewBtn) reviewBtn.addEventListener('click', () => openDeck(d.id, 'review'));
       if(exportBtn) exportBtn.addEventListener('click', () => exportDeck(d.id));
       if(deleteBtn) deleteBtn.addEventListener('click', () => requestDeleteDeck(d.id, d.title));
     });
@@ -1133,8 +1178,8 @@
         </div>
         <div class="deck-card-actions">
           <button class="btn primary" data-study="${d.id}">Study</button>
+          <button class="btn" data-sheet="${d.id}" title="Study all questions and answers in rows">Rows</button>
           <button class="btn" data-quiz="${d.id}">Quiz</button>
-          <button class="btn review-btn" data-review="${d.id}">Review</button>
           <button class="btn icon-only" data-export="${d.id}" title="Export JSON">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
@@ -1198,7 +1243,7 @@
     progressMap = prog.grades || {};
     const allIdx = activeDeck.cards.map((_,i)=>i);
     if(mode === 'quiz') startQuizSession(allIdx);
-    else if(mode === 'review') startReviewSession();
+    else if(mode === 'sheet') startStudySheet();
     else startStudySession(allIdx, 'full');
   }
 
@@ -1244,6 +1289,112 @@
     showToast('Deck deleted');
   }
 
+
+  /* ============================================================
+     STUDY SHEET (ALL Q&A ROWS)
+  ============================================================ */
+  function cardQuestionText(c){ return c.type === 'mcq' ? c.question : c.front; }
+  function cardAnswerText(c){ return c.type === 'mcq' ? (c.options && c.options[c.answer]) : c.back; }
+  function cardSearchText(c){
+    return [c.tag, c.type, cardQuestionText(c), cardAnswerText(c), ...(c.options||[]), c.explanation]
+      .filter(Boolean).join(' ').toLowerCase();
+  }
+  function progressLabel(idx){
+    const g = progressMap[idx];
+    if(g === 'good') return 'Good';
+    if(g === 'hard') return 'Hard';
+    if(g === 'forgot') return 'Forgot';
+    if(g === 'skipped') return 'Skipped';
+    return 'New';
+  }
+  function sheetVisualNote(c){
+    if(c.plot) return `<div class="sheet-visual-note">Graph included${c.plot.expr ? ': y = ' + escapeHtml(c.plot.expr) : ''}. Open flashcards for the interactive view.</div>`;
+    if(c.chart) return `<div class="sheet-visual-note">Chart included. Open flashcards for the interactive view.</div>`;
+    return '';
+  }
+  function sheetSvg(c){ return c.svg ? `<div class="sheet-svg">${c.svg}</div>` : ''; }
+  function sheetAnswerHTML(c){
+    if(c.type === 'mcq'){
+      const letters = ['A','B','C','D','E','F'];
+      const answerLetter = letters[c.answer] || (c.answer + 1);
+      const options = (c.options||[]).map((opt,i) => `
+        <div class="sheet-option ${i===c.answer?'correct':''}">
+          <span class="sheet-option-letter">${letters[i] || (i+1)}</span>
+          <span>${formatText(opt)}</span>
+        </div>`).join('');
+      const explanation = c.explanation ? `<div class="sheet-explanation"><strong>Why:</strong> ${formatText(c.explanation)}</div>` : '';
+      return `
+        <div class="sheet-text sheet-answer"><strong>Correct answer: ${answerLetter}</strong> — ${formatText(c.options[c.answer])}</div>
+        <div class="sheet-options">${options}</div>
+        ${explanation}`;
+    }
+    return `<div class="sheet-text sheet-answer">${formatText(c.back)}</div>${sheetSvg(c)}`;
+  }
+  function sheetRowHTML(c, idx){
+    const tag = c.tag ? `<span class="sheet-chip" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '';
+    const p = progressMap[idx] || 'new';
+    const typeLabel = c.type === 'mcq' ? 'MCQ' : 'Basic';
+    return `
+      <div class="sheet-row">
+        <div class="sheet-row-top">
+          <span class="sheet-num">#${String(idx+1).padStart(2,'0')}</span>
+          ${tag}
+          <span class="sheet-type">${typeLabel}</span>
+          <span class="sheet-progress ${p}">${progressLabel(idx)}</span>
+        </div>
+        <div class="sheet-grid">
+          <div class="sheet-col">
+            <div class="sheet-col-title">Question</div>
+            <div class="sheet-text">${formatText(cardQuestionText(c))}</div>
+            ${sheetVisualNote(c)}
+          </div>
+          <div class="sheet-col answer">
+            <div class="sheet-col-title">Answer</div>
+            <div class="sheet-a-body">${sheetAnswerHTML(c)}</div>
+            <div class="sheet-answer-hidden">Answer hidden — use “Show answers” when ready.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+  function startStudySheet(){
+    if(session && session.kind==='quiz' && session.timerId){ clearInterval(session.timerId); }
+    session = null;
+    currentVisual = null;
+    sheetAnswersVisible = true;
+    setView('sheet');
+    renderTopbar();
+    renderStudySheet();
+  }
+  function renderStudySheet(){
+    if(!activeDeck) return;
+    $('sheetTitle').textContent = activeDeck.title;
+    $('sheetMeta').textContent = 'Fast preview mode: every question sits beside its answer, with MCQ choices, explanations, tags, and progress labels.';
+    const search = $('sheetSearch');
+    const toggle = $('sheetToggleAnswers');
+    const start = $('sheetStartCards');
+    search.value = '';
+    search.oninput = renderStudySheetRows;
+    toggle.onclick = () => { sheetAnswersVisible = !sheetAnswersVisible; renderStudySheetRows(); };
+    start.onclick = () => startStudySession(activeDeck.cards.map((_,i)=>i), 'full');
+    renderStudySheetRows();
+  }
+  function renderStudySheetRows(){
+    if(!activeDeck) return;
+    const rowsEl = $('sheetRows');
+    const search = $('sheetSearch');
+    const q = (search && search.value ? search.value : '').trim().toLowerCase();
+    const filtered = activeDeck.cards
+      .map((c,idx) => ({c,idx}))
+      .filter(({c}) => !q || cardSearchText(c).includes(q));
+    $('sheetCount').textContent = `${filtered.length}/${activeDeck.cards.length} row${filtered.length===1?'':'s'}`;
+    $('sheetToggleAnswers').textContent = sheetAnswersVisible ? 'Hide answers' : 'Show answers';
+    rowsEl.classList.toggle('answers-hidden', !sheetAnswersVisible);
+    rowsEl.innerHTML = filtered.length
+      ? filtered.map(({c,idx}) => sheetRowHTML(c, idx)).join('')
+      : `<div class="sheet-empty">No rows match that search.</div>`;
+    renderMath(rowsEl);
+  }
+
   /* ============================================================
      SESSION (STUDY + QUIZ SHARED ENGINE)
   ============================================================ */
@@ -1259,106 +1410,6 @@
     session.timerId = setInterval(tickQuizTimer, 1000);
     updateQuizTimerDisplay();
   }
-  /* ============================================================
-     REVIEW MODE (all Q&A in rows)
-  ============================================================ */
-  function startReviewSession(){
-    session = null; // no active session in review mode
-    setView('review');
-    renderReview();
-    renderTopbar();
-  }
-
-  let reviewSearchTerm = '';
-  let reviewTagFilter = '';
-  let reviewShowAnswers = true;
-
-  function renderReview(){
-    const wrap = $('reviewWrap');
-    const cards = activeDeck.cards;
-    const allTags = [...new Set(cards.map(c => c.tag).filter(Boolean))];
-
-    // Filter cards
-    let filtered = cards.map((c,i) => ({ ...c, idx: i }));
-    if(reviewSearchTerm){
-      const q = reviewSearchTerm.toLowerCase();
-      filtered = filtered.filter(c => {
-        const text = c.type === 'mcq' ? c.question + ' ' + c.options.join(' ') + ' ' + (c.explanation||'')
-                     : c.front + ' ' + c.back;
-        return text.toLowerCase().includes(q);
-      });
-    }
-    if(reviewTagFilter){
-      filtered = filtered.filter(c => c.tag === reviewTagFilter);
-    }
-
-    // Build rows
-    const gradeMap = progressMap;
-    const rows = filtered.map(c => {
-      const grade = gradeMap[c.idx];
-      const gradeBadge = grade ? `<span class="review-grade-badge ${grade}">${grade === 'good' ? '✓ Good' : grade === 'hard' ? '◐ Hard' : '✗ Forgot'}</span>` : '<span class="review-grade-badge none">—</span>';
-      const tagBadge = c.tag ? `<span class="review-tag-badge" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '';
-
-      if(c.type === 'mcq'){
-        const letters = ['A','B','C','D','E','F'];
-        const optionsHtml = c.options.map((o,i) => {
-          const isCorrect = i === c.answer;
-          return `<span class="mcq-opt-inline ${isCorrect ? 'correct' : ''}">${letters[i]||i+1}. ${formatText(o)}</span>`;
-        }).join('');
-        const explanationHtml = c.explanation ? `<div class="review-explanation">${formatText(c.explanation)}</div>` : '';
-        return `
-          <div class="review-row mcq" data-idx="${c.idx}">
-            <div class="review-num">${c.idx+1}</div>
-            <div class="review-body">
-              <div class="review-q">${tagBadge}${gradeBadge}<span class="review-type-badge">MCQ</span> ${formatText(c.question)}</div>
-              <div class="review-a">${optionsHtml}</div>
-              ${reviewShowAnswers ? explanationHtml : ''}
-            </div>
-          </div>`;
-      } else {
-        const visualNote = (c.chart || c.plot || c.svg) ? '<span class="review-type-badge">visual</span>' : '';
-        return `
-          <div class="review-row basic" data-idx="${c.idx}">
-            <div class="review-num">${c.idx+1}</div>
-            <div class="review-body">
-              <div class="review-q">${tagBadge}${gradeBadge}${visualNote} ${formatText(c.front)}</div>
-              <div class="review-a">${reviewShowAnswers ? formatText(c.back) : '<span class="review-hidden-answer">Hidden — click "Show answers"</span>'}</div>
-            </div>
-          </div>`;
-      }
-    }).join('');
-
-    wrap.innerHTML = `
-      <div class="review-toolbar">
-        <input type="text" id="reviewSearch" placeholder="Search cards…" value="${escapeHtml(reviewSearchTerm)}" class="review-search">
-        <select id="reviewTagSelect" class="review-tag-select">
-          <option value="">All tags</option>
-          ${allTags.map(t => `<option value="${escapeHtml(t)}" ${reviewTagFilter===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
-        </select>
-        <button class="btn ghost" id="reviewToggleAnswers">${reviewShowAnswers ? 'Hide answers' : 'Show answers'}</button>
-        <div class="review-stats">${filtered.length} of ${cards.length} cards</div>
-      </div>
-      <div class="review-list">${rows || '<div class="review-empty">No cards match your search.</div>'}</div>`;
-
-    // Event listeners
-    const searchInput = $('reviewSearch');
-    if(searchInput){
-      searchInput.addEventListener('input', (e) => {
-        reviewSearchTerm = e.target.value;
-        renderReview();
-        const newInput = $('reviewSearch');
-        if(newInput){ newInput.focus(); newInput.setSelectionRange(reviewSearchTerm.length, reviewSearchTerm.length); }
-      });
-    }
-    const tagSelect = $('reviewTagSelect');
-    if(tagSelect) tagSelect.addEventListener('change', (e) => { reviewTagFilter = e.target.value; renderReview(); });
-    const toggleBtn = $('reviewToggleAnswers');
-    if(toggleBtn) toggleBtn.addEventListener('click', () => { reviewShowAnswers = !reviewShowAnswers; renderReview(); });
-
-    // Render math in review rows
-    wrap.querySelectorAll('.review-q, .review-a, .mcq-opt-inline, .review-explanation').forEach(el => renderMath(el));
-  }
-
   function tickQuizTimer(){
     if(!session || session.kind !== 'quiz') return;
     session.remaining--;
@@ -1443,12 +1494,11 @@
     buildGradeRow(idx, c.type);
 
     if(c.type === 'mcq'){
-      const extra = alreadyAnswered && session.kind==='study' ? ' &nbsp;·&nbsp; <kbd>G</kbd> good <kbd>H</kbd> hard <kbd>F</kbd> forgot' : alreadyAnswered && session.kind==='quiz' ? ' &nbsp;·&nbsp; <kbd>C</kbd> correct <kbd>I</kbd> incorrect' : '';
-      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>1-${Math.min(c.options.length,6)}</kbd> choose &nbsp;·&nbsp; <kbd>space</kbd> flip for explanation${extra}` + (session.kind==='study' ? ` &nbsp;·&nbsp; <kbd>S</kbd> shuffle` : '');
+      const gradeKeys = session.kind==='study' ? ` &nbsp;·&nbsp; after answer: <kbd>F</kbd> forgot <kbd>H</kbd> hard <kbd>G</kbd> good` : ` &nbsp;·&nbsp; after answer: <kbd>F</kbd> incorrect <kbd>G</kbd> correct`;
+      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>1-${Math.min(c.options.length,6)}</kbd> choose &nbsp;·&nbsp; <kbd>space</kbd> explanation${gradeKeys}` + (session.kind==='study' ? ` &nbsp;·&nbsp; <kbd>S</kbd> shuffle` : '');
     } else {
-      const graded = $('gradeRow').classList.contains('show');
-      const gradeHint = graded && session.kind==='study' ? ' &nbsp;·&nbsp; <kbd>G</kbd> good <kbd>H</kbd> hard <kbd>F</kbd> forgot' : graded && session.kind==='quiz' ? ' &nbsp;·&nbsp; <kbd>C</kbd> correct <kbd>I</kbd> incorrect' : '';
-      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>space</kbd> flip${gradeHint} &nbsp;·&nbsp; <kbd>S</kbd> shuffle`;
+      const gradeKeys = session.kind==='study' ? ` &nbsp;·&nbsp; <kbd>F</kbd> forgot <kbd>H</kbd> hard <kbd>G</kbd> good` : ` &nbsp;·&nbsp; <kbd>F</kbd> incorrect <kbd>G</kbd> correct`;
+      kbdHint.innerHTML = `<kbd>←</kbd> <kbd>→</kbd> navigate &nbsp;·&nbsp; <kbd>space</kbd> flip${gradeKeys}` + (session.kind==='study' ? ` &nbsp;·&nbsp; <kbd>S</kbd> shuffle` : '');
     }
     if(session.kind === 'quiz') kbdHint.innerHTML = kbdHint.innerHTML.replace(/&nbsp;·&nbsp; <kbd>S<\/kbd> shuffle/,'');
 
@@ -1478,13 +1528,13 @@
     if(type === 'basic'){
       if(session.kind === 'study'){
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Forgot</button>
-          <button class="grade-btn hard" data-g="hard">\u25D0 Hard</button>
-          <button class="grade-btn good" data-g="good">\u2713 Good</button>`;
+          <button class="grade-btn forgot" data-g="forgot">\u2717 Forgot <span class="grade-key">F</span></button>
+          <button class="grade-btn hard" data-g="hard">\u25D0 Hard <span class="grade-key">H</span></button>
+          <button class="grade-btn good" data-g="good">\u2713 Good <span class="grade-key">G</span></button>`;
       } else {
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Incorrect</button>
-          <button class="grade-btn good" data-g="good">\u2713 Correct</button>`;
+          <button class="grade-btn forgot" data-g="forgot">\u2717 Incorrect <span class="grade-key">F</span></button>
+          <button class="grade-btn good" data-g="good">\u2713 Correct <span class="grade-key">G</span></button>`;
       }
       gradeRow.querySelectorAll('.grade-btn').forEach(b => b.addEventListener('click', () => gradeCard(idx, b.dataset.g)));
       if(session.grades[idx]) gradeRow.classList.add('show');
@@ -1496,13 +1546,13 @@
       const autoGrade = session.mcqAnswers[idx] === c.answer ? 'good' : 'forgot';
       if(session.kind === 'study'){
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Forgot</button>
-          <button class="grade-btn hard" data-g="hard">\u25D0 Hard</button>
-          <button class="grade-btn good" data-g="good">\u2713 Good</button>`;
+          <button class="grade-btn forgot" data-g="forgot">\u2717 Forgot <span class="grade-key">F</span></button>
+          <button class="grade-btn hard" data-g="hard">\u25D0 Hard <span class="grade-key">H</span></button>
+          <button class="grade-btn good" data-g="good">\u2713 Good <span class="grade-key">G</span></button>`;
       } else {
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Incorrect</button>
-          <button class="grade-btn good" data-g="good">\u2713 Correct</button>`;
+          <button class="grade-btn forgot" data-g="forgot">\u2717 Incorrect <span class="grade-key">F</span></button>
+          <button class="grade-btn good" data-g="good">\u2713 Correct <span class="grade-key">G</span></button>`;
       }
       gradeRow.querySelectorAll('.grade-btn').forEach(b => b.addEventListener('click', () => gradeMcq(idx, b.dataset.g)));
       // Highlight the auto-assigned grade
@@ -1523,6 +1573,11 @@
 
   function gradeCard(idx, grade){
     session.grades[idx] = grade;
+    const gradeRow = $('gradeRow');
+    gradeRow.querySelectorAll('.grade-btn').forEach(b => {
+      if(b.dataset.g === grade){ b.style.opacity = '1'; b.style.fontWeight = '700'; }
+      else { b.style.opacity = '0.55'; b.style.fontWeight = '600'; }
+    });
     if(session.kind === 'study'){
       showToast(grade === 'good' ? 'Marked as good' : grade === 'hard' ? 'Marked as hard' : 'Marked as forgot');
       setTimeout(goNext, 280);
@@ -1648,6 +1703,30 @@
     if(session.pos > 0){ session.pos--; renderSessionCard('back'); }
   }
 
+  function gradeCurrentFromKeyboard(grade){
+    if(!session || view !== 'session') return;
+    const c = currentCard();
+    if(!c) return;
+    if(session.kind === 'quiz' && grade === 'hard') return;
+    const idx = session.order[session.pos];
+
+    // For basic cards, do not accidentally grade before the answer is visible.
+    if(c.type === 'basic' && !$('cardInner').classList.contains('flipped')){
+      toggleFlip();
+      showToast('Answer revealed — press the grade key again.');
+      return;
+    }
+
+    // For MCQ cards, keyboard grading is available after choosing an answer.
+    if(c.type === 'mcq' && session.mcqAnswers[idx] === undefined){
+      showToast('Choose an option first.');
+      return;
+    }
+
+    if(c.type === 'mcq') gradeMcq(idx, grade);
+    else gradeCard(idx, grade);
+  }
+
   async function finalizeSession(){
     if(session.kind === 'quiz' && session.timerId) clearInterval(session.timerId);
     // fill skipped
@@ -1744,40 +1823,25 @@
 
   document.addEventListener('keydown', (e) => {
     if($('modalBackdrop').classList.contains('open') || $('confirmBackdrop').classList.contains('open')) return;
-    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    // Grade shortcuts — work in session view after card is graded/answered
-    if(view === 'session' && session){
-      const idx = session.order[session.pos];
-      const c = activeDeck.cards[idx];
-      const k = e.key.toLowerCase();
-      const isGradeable = (c.type === 'basic' && $('gradeRow').classList.contains('show')) ||
-                          (c.type === 'mcq' && session.mcqAnswers[idx] !== undefined);
-      if(isGradeable && session.kind === 'study'){
-        if(k === 'g'){ if(c.type==='mcq') gradeMcq(idx, 'good'); else gradeCard(idx, 'good'); return; }
-        if(k === 'h'){ if(c.type==='mcq') gradeMcq(idx, 'hard'); else gradeCard(idx, 'hard'); return; }
-        if(k === 'f'){ if(c.type==='mcq') gradeMcq(idx, 'forgot'); else gradeCard(idx, 'forgot'); return; }
-      } else if(isGradeable && session.kind === 'quiz'){
-        if(k === 'c' || k === 'g'){ if(c.type==='mcq') gradeMcq(idx, 'good'); else gradeCard(idx, 'good'); return; }
-        if(k === 'i' || k === 'f'){ if(c.type==='mcq') gradeMcq(idx, 'forgot'); else gradeCard(idx, 'forgot'); return; }
-      }
-    }
-
     if(view !== 'session' || !session) return;
-    if(e.key === 'ArrowRight'){ goNext(); }
-    else if(e.key === 'ArrowLeft'){ goPrev(); }
+    const key = e.key.toLowerCase();
+    if(e.key === 'ArrowRight'){ e.preventDefault(); goNext(); }
+    else if(e.key === 'ArrowLeft'){ e.preventDefault(); goPrev(); }
     else if(e.key === ' ' || e.key === 'Enter'){
       e.preventDefault();
       const c = currentCard();
       if(c && c.type === 'mcq' && session.mcqAnswers[session.order[session.pos]] === undefined) return;
       toggleFlip();
     }
-    else if(e.key.toLowerCase() === 's' && session.kind==='study'){ session.order = shuffleArray(session.order); session.pos = 0; renderSessionCard('fwd'); }
+    else if(key === 'f'){ e.preventDefault(); gradeCurrentFromKeyboard('forgot'); }
+    else if(key === 'h' && session.kind === 'study'){ e.preventDefault(); gradeCurrentFromKeyboard('hard'); }
+    else if(key === 'g'){ e.preventDefault(); gradeCurrentFromKeyboard('good'); }
+    else if(key === 's' && session.kind==='study'){ e.preventDefault(); session.order = shuffleArray(session.order); session.pos = 0; renderSessionCard('fwd'); }
     else if(/^[1-6]$/.test(e.key)){
       const c = currentCard();
       if(c && c.type === 'mcq'){
         const i = parseInt(e.key,10) - 1;
-        if(i < c.options.length) selectMcqOption(session.order[session.pos], i);
+        if(i < c.options.length){ e.preventDefault(); selectMcqOption(session.order[session.pos], i); }
       }
     }
   });
