@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -452,6 +453,205 @@
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--ink-bright); color:var(--ink); padding:10px 18px; border-radius:24px; font-size:12px; font-weight:600; box-shadow:0 12px 30px -8px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .25s var(--ease), transform .25s var(--ease); z-index:60; max-width:90vw; text-align:center; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+  /* =========================================================
+     v2 UPGRADES - polish, library toolbar, sorting, features
+  ========================================================= */
+  *{ scrollbar-width:thin; scrollbar-color: var(--ink-softer) transparent; }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--ink-softer); border-radius:8px; border:2px solid transparent; background-clip:content-box; }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--ink-muted); background-clip:content-box; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--amber); outline-offset:2px; border-radius:8px;
+  }
+
+  .page-kicker{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--amber); margin:4px 0 18px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .page-kicker::after{ content:""; flex:1; height:1px; background:var(--ink-line); }
+
+  /* ---------- Library toolbar ---------- */
+  .lib-toolbar{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+    padding:10px; border:1px solid var(--ink-line); border-radius:14px; background:var(--ink-soft);
+    position:sticky; top:0; z-index:20; backdrop-filter:blur(8px);
+  }
+  .lib-search{
+    flex:1; min-width:min(240px,100%); min-height:40px; border-radius:10px; border:1px solid var(--ink-line);
+    background:var(--ink); color:var(--ink-bright); padding:9px 12px 9px 34px; font:13px var(--font-body);
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238A93A3' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.5' y2='16.5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:11px center;
+  }
+  .lib-search:focus{ outline:none; border-color:var(--amber); background-color:var(--ink); }
+  .lib-search::-webkit-search-cancel-button{ -webkit-appearance:none; }
+
+  .seg{ display:inline-flex; align-items:center; background:var(--ink); border:1px solid var(--ink-line); border-radius:9px; padding:3px; gap:2px; }
+  .seg button{
+    border:none; background:transparent; color:var(--ink-muted); font:600 11px var(--font-mono);
+    padding:6px 10px; border-radius:7px; cursor:pointer; letter-spacing:.03em; white-space:nowrap;
+    transition:background .16s var(--ease), color .16s var(--ease);
+  }
+  .seg button:hover{ color:var(--ink-bright); }
+  .seg button.on{ background:var(--emerald); color:#EFF7F1; }
+
+  .sort-wrap{ position:relative; display:inline-flex; align-items:center; }
+  .sort-select{
+    appearance:none; -webkit-appearance:none; min-height:38px; border-radius:9px; border:1px solid var(--ink-line);
+    background:var(--ink); color:var(--ink-bright); font:500 12px var(--font-body); padding:0 30px 0 12px; cursor:pointer;
+  }
+  .sort-wrap::after{
+    content:""; position:absolute; right:11px; top:50%; transform:translateY(-60%);
+    border-left:5px solid transparent; border-right:5px solid transparent; border-top:5px solid var(--ink-muted); pointer-events:none;
+  }
+  .sort-select:hover{ border-color:rgba(255,255,255,.2); }
+  .select-wrap{ position:relative; display:inline-flex; align-items:center; }
+  .fold-select{
+    appearance:none; -webkit-appearance:none; min-height:38px; border-radius:9px; border:1px solid var(--ink-line);
+    background:var(--ink); color:var(--ink-bright); font:500 12px var(--font-body); padding:0 32px 0 12px; cursor:pointer;
+    max-width:200px;
+  }
+  .fold-select:hover{ border-color:rgba(255,255,255,.2); }
+  .select-wrap::after{
+    content:""; position:absolute; right:11px; top:50%; transform:translateY(-60%);
+    border-left:5px solid transparent; border-right:5px solid transparent; border-top:5px solid var(--ink-muted); pointer-events:none;
+  }
+  .fold-select option, .fold-select optgroup{ background:var(--ink-soft); color:var(--ink-bright); }
+  @media (max-width:640px){ .select-wrap{ flex:1; } .fold-select{ max-width:none; width:100%; } }
+  .lib-meta{ font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); margin-left:auto; white-space:nowrap; }
+  .lib-meta b{ color:var(--ink-bright); font-weight:600; }
+  .sort-badge{ font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber); }
+
+  .lib-hero{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:16px; }
+  .lib-hero .stat-tile{
+    background:var(--ink-soft); border:1px solid var(--ink-line); border-radius:14px; padding:12px 14px;
+    display:flex; flex-direction:column; gap:2px; position:relative; overflow:hidden;
+  }
+  .lib-hero .stat-tile::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--tile,#2F6F52); opacity:.7; }
+  .lib-hero .stat-tile .sv{ font-family:var(--font-display); font-size:24px; font-weight:600; color:var(--ink-bright); line-height:1; }
+  .lib-hero .stat-tile .sl{ font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-muted); font-family:var(--font-mono); }
+  .lib-hero .stat-tile.flame .sv{ color:var(--amber); }
+
+  /* ---------- Deck card v2 ---------- */
+  .deck-card{ position:relative; overflow:hidden; gap:12px; }
+  .deck-card::before{
+    content:""; position:absolute; inset:0 0 auto 0; height:3px;
+    background:linear-gradient(90deg, var(--card-a,#2F6F52), var(--card-b,#C98A2C)); opacity:.55;
+  }
+  .deck-card:hover{ transform:translateY(-3px); border-color:rgba(255,255,255,.22);
+    box-shadow:0 22px 44px -18px var(--shadow-strong), 0 0 0 1px rgba(255,255,255,.03) inset; }
+  .deck-card::after{
+    content:""; position:absolute; right:-40px; top:-40px; width:120px; height:120px; border-radius:50%;
+    background:radial-gradient(circle at center, rgba(201,138,44,.12), transparent 70%); pointer-events:none; transition:opacity .3s var(--ease); opacity:0;
+  }
+  .deck-card:hover::after{ opacity:1; }
+  .deck-card-head{ align-items:center; }
+  .deck-card-head h3{ font-size:17px; letter-spacing:-.01em; }
+  .deck-title-line{ display:flex; align-items:center; gap:8px; }
+  .deck-folder-chip{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; padding:2px 8px; border-radius:20px;
+    border:1px solid var(--ink-line); color:var(--ink-muted); white-space:nowrap; max-width:150px;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .deck-meta{ display:flex; align-items:center; gap:10px; font-size:11px; color:var(--ink-muted); }
+  .deck-meta .mdot{ width:3px; height:3px; border-radius:50%; background:var(--ink-muted); }
+  .deck-meta .recent{ color:var(--emerald-bright); }
+  .mini-meter{ height:4px; border-radius:4px; background:var(--ink-line); overflow:hidden; }
+  .mini-meter > i{ display:block; height:100%; border-radius:4px;
+    background:linear-gradient(90deg, var(--amber), var(--emerald-bright)); width:0%; transition:width .4s var(--ease); }
+  .deck-card-actions .btn{ padding:8px 11px; font-size:12px; min-height:36px; }
+  .deck-card-actions .icon-only{ width:36px; padding:0; }
+  .deck-card-actions .btn.soft{ border-color:transparent; background:rgba(255,255,255,.03); }
+  .deck-card-actions .btn.soft:hover{ background:rgba(255,255,255,.07); }
+
+  .ring{ box-shadow:0 2px 8px -3px var(--shadow-strong); }
+
+  .deck-corner{ display:flex; gap:4px; flex-shrink:0; }
+  .mini-icon{
+    width:28px; height:28px; border-radius:8px; border:1px solid var(--ink-line); background:transparent;
+    color:var(--ink-muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background .15s var(--ease), color .15s var(--ease), transform .1s var(--ease);
+  }
+  .mini-icon:hover{ background:var(--ink-softer); color:var(--ink-bright); }
+  .mini-icon:active{ transform:scale(.92); }
+  .mini-icon svg{ width:14px; height:14px; }
+  .mini-icon.more:hover{ color:var(--amber); }
+
+  .sheet-hero{ background:linear-gradient(135deg, rgba(47,111,82,.22), rgba(201,138,44,.10)), var(--ink-soft);
+    box-shadow:0 20px 40px -24px var(--shadow-strong); }
+  .sheet-row{ transition:transform .15s var(--ease), border-color .15s var(--ease), box-shadow .15s var(--ease); }
+  .sheet-row:hover{ border-color:rgba(255,255,255,.18); transform:translateY(-1px); box-shadow:0 16px 30px -22px var(--shadow-strong); }
+
+  .empty-state{ padding:26px; border:1px dashed var(--ink-line); border-radius:18px;
+    background:linear-gradient(160deg, rgba(47,111,82,.06), transparent 60%); margin:30px auto; }
+  .empty-state .glyph{ border-radius:18px; background:var(--ink-soft); border:1.5px dashed var(--ink-line); animation:floaty 4s ease-in-out infinite; }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-5px); } }
+
+  #confettiLayer{ position:fixed; inset:0; pointer-events:none; z-index:80; overflow:hidden; }
+
+  .save-dot{ width:7px; height:7px; border-radius:50%; background:var(--emerald-bright); display:inline-block;
+    box-shadow:0 0 0 0 rgba(62,142,104,.6); }
+  .save-dot.flash{ animation:pulseRing 1s ease-out; }
+
+  /* Deck card inline quick-menu (expandable row) */
+  .deck-card.menu-open .deck-extra{ display:grid; }
+  .deck-extra{ display:none; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; }
+  .deck-extra .btn{
+    font-size:10.5px; padding:6px 8px; min-height:30px; justify-content:center;
+    font-family:var(--font-mono); letter-spacing:.02em; color:var(--ink-muted);
+  }
+  .deck-extra .btn:hover{ color:var(--ink-bright); }
+  .deck-extra .btn svg{ width:12px; height:12px; }
+  .deck-extra .btn.danger:hover{ color:#e08787; }
+  .menu-toggle.on{ background:var(--ink-softer); color:var(--amber); }
+  .badge-play{ position:absolute; right:8px; top:8px; }
+
+  /* -------- List / compact card layout -------- */
+  .deck-list{ display:flex; flex-direction:column; gap:8px; }
+  .deck-item{
+    display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--ink-line);
+    border-radius:12px; background:var(--ink-soft); transition:border-color .15s var(--ease), transform .15s var(--ease);
+  }
+  .deck-item:hover{ border-color:rgba(255,255,255,.2); transform:translateX(2px); }
+  .deck-item .fold-ico{ flex:none; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,var(--emerald),var(--amber)); color:#0f140f; }
+  .deck-item .fold-ico svg{ width:18px; height:18px; }
+  .deck-item .di-body{ flex:1; min-width:0; }
+  .deck-item .di-title{ font-family:var(--font-display); font-size:15px; font-weight:600; color:var(--ink-bright);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .deck-item .di-sub{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); margin-top:2px;
+    display:flex; gap:8px; align-items:center; }
+  .deck-item .di-sub .pill{ padding:1px 7px; border-radius:20px; background:var(--ink); border:1px solid var(--ink-line); }
+  .deck-item .di-right{ flex:none; display:flex; align-items:center; gap:6px; }
+  .deck-item .di-right .mini-meter{ width:70px; }
+
+  /* Folder section head icons */
+  .folder-title .fdot{ width:8px; height:8px; border-radius:3px;
+    background:linear-gradient(135deg,var(--emerald),var(--amber)); }
+
+  /* Compact view = denser grid via CSS var is hard; just smaller buttons */
+  .lib-compact .deck-grid{ grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr)); }
+  .lib-compact .deck-card{ padding:13px; }
+  .lib-compact .deck-card h3{ font-size:14px; }
+
+  /* Animate first render of library after typing in sort */
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+  .folder-section,.lib-hero,.lib-toolbar{ animation:fadeUp .3s var(--ease); }
+  @keyframes pulseRing{ 0%{ box-shadow:0 0 0 0 rgba(62,142,104,.7);} 100%{ box-shadow:0 0 0 12px rgba(62,142,104,0);} }
+
+  @media (max-width:640px){
+    .lib-toolbar{ padding:8px; }
+    .lib-hero{ grid-template-columns:repeat(2,1fr); }
+    .lib-meta{ width:100%; margin-left:0; text-align:right; }
+    .lib-search{ min-width:100%; }
+    .seg{ flex:1; }
+    .seg button{ flex:1; }
+    .sort-wrap{ flex:1; }
+    .sort-select{ width:100%; }
+    .deck-card-actions .icon-only{ width:40px; }
+  }
+
   /* Details/Summary for template */
   details{ border:1px solid var(--ink-line); border-radius:8px; padding:0; }
   details summary{ padding:8px 12px; list-style:none; display:flex; align-items:center; gap:6px; }
@@ -700,7 +900,23 @@
     </div>
   </div>
 
+  <!-- Prompt / rename modal -->
+  <div class="modal-backdrop" id="promptBackdrop">
+    <div class="modal small">
+      <div class="modal-head"><h3 id="promptTitle">Rename</h3><button class="modal-close" id="promptClose">&times;</button></div>
+      <div class="modal-body">
+        <span class="field-label" id="promptLabel">Name</span>
+        <input type="text" id="promptInput" style="margin-bottom:0">
+      </div>
+      <div class="modal-foot" style="justify-content:flex-end;">
+        <button class="btn" id="promptCancel">Cancel</button>
+        <button class="btn primary" id="promptOk">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
+  <div id="confettiLayer"></div>
 
 <script>
 (function(){
@@ -907,6 +1123,7 @@
      TEXT FORMATTING + KATEX
   ============================================================ */
   function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escAttr(str){ return String(str==null?'':str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function formatText(raw, allowHtml){
     if(raw===undefined||raw===null) return '';
     let s = allowHtml ? String(raw) : escapeHtml(String(raw));
@@ -975,8 +1192,8 @@
       { type:"basic", tag:"Chemistry", front:"Draw the Lewis structure of water.",
         back:"Water has two lone pairs on oxygen:",
         svg:'<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="65" x2="100" y2="35" stroke="#2A2620" stroke-width="2.5"/><line x1="150" y1="65" x2="100" y2="35" stroke="#2A2620" stroke-width="2.5"/><circle cx="100" cy="35" r="16" fill="none" stroke="#B24C4C" stroke-width="2"/><text x="100" y="40" text-anchor="middle" fill="#B24C4C" font-size="16" font-weight="bold" font-family="serif">O</text><circle cx="50" cy="65" r="14" fill="none" stroke="#3D7EA6" stroke-width="2"/><text x="50" y="70" text-anchor="middle" fill="#3D7EA6" font-size="16" font-weight="bold" font-family="serif">H</text><circle cx="150" cy="65" r="14" fill="none" stroke="#3D7EA6" stroke-width="2"/><text x="150" y="70" text-anchor="middle" fill="#3D7EA6" font-size="16" font-weight="bold" font-family="serif">H</text><text x="125" y="28" fill="#6B6250" font-size="13" font-family="monospace">:</text><text x="125" y="52" fill="#6B6250" font-size="13" font-family="monospace">:</text></svg>' },
-      { type:"mcq", tag:"Chemistry", question:"What is the pH of a neutral aqueous solution at 25\\u00B0C?",
-        options:["0","7","10","14"], answer:1, explanation:"Pure water at 25\\u00B0C has $[H^+] = 10^{-7}$ M, giving pH $= 7$." },
+      { type:"mcq", tag:"Chemistry", question:"What is the pH of a neutral aqueous solution at 25°C?",
+        options:["0","7","10","14"], answer:1, explanation:"Pure water at 25°C has $[H^+] = 10^{-7}$ M, giving pH $= 7$." },
       { type:"basic", tag:"Chemistry", front:"What is the structural formula of ethanol?",
         back:"$$\\ce{CH3-CH2-OH}$$\nEthanol: 2 carbons with a hydroxyl group.",
         svg:'<svg viewBox="0 0 240 60" xmlns="http://www.w3.org/2000/svg"><text x="10" y="40" fill="#2A2620" font-size="20" font-weight="bold" font-family="serif">H</text><line x1="26" y1="35" x2="40" y2="35" stroke="#2A2620" stroke-width="2"/><line x1="40" y1="35" x2="40" y2="18" stroke="#2A2620" stroke-width="2"/><text x="33" y="16" fill="#2A2620" font-size="14" font-family="serif">H</text><line x1="40" y1="35" x2="40" y2="52" stroke="#2A2620" stroke-width="2"/><text x="33" y="56" fill="#2A2620" font-size="14" font-family="serif">H</text><text x="40" y="40" fill="#2A2620" font-size="20" font-weight="bold" font-family="serif">C</text><line x1="56" y1="35" x2="76" y2="35" stroke="#2A2620" stroke-width="2"/><line x1="76" y1="35" x2="76" y2="18" stroke="#2A2620" stroke-width="2"/><text x="69" y="16" fill="#2A2620" font-size="14" font-family="serif">H</text><line x1="76" y1="35" x2="76" y2="52" stroke="#2A2620" stroke-width="2"/><text x="69" y="56" fill="#2A2620" font-size="14" font-family="serif">H</text><text x="76" y="40" fill="#2A2620" font-size="20" font-weight="bold" font-family="serif">C</text><line x1="92" y1="35" x2="112" y2="35" stroke="#2A2620" stroke-width="2"/><text x="112" y="40" fill="#B24C4C" font-size="20" font-weight="bold" font-family="serif">O</text><line x1="128" y1="35" x2="146" y2="35" stroke="#2A2620" stroke-width="2"/><text x="146" y="40" fill="#3D7EA6" font-size="20" font-weight="bold" font-family="serif">H</text></svg>' },
@@ -988,7 +1205,7 @@
       { type:"mcq", tag:"Chemistry", question:"This titration curve shows pH vs. volume of titrant added. Where is the equivalence point?",
         chart:{ kind:"line", labels:[0,5,10,15,20,25,30], series:[{name:"pH", data:[2,2.5,3.2,4.5,8.9,11,11.5]}] },
         options:["5 mL","15 mL","20 mL","30 mL"], answer:2,
-        explanation:"The steep jump in pH between 15\\u201320 mL marks the equivalence point." },
+        explanation:"The steep jump in pH between 15–20 mL marks the equivalence point." },
       { type:"mcq", tag:"Number Theory", question:"Which of the following is a prime number?",
         options:["21","27","31","33"], answer:2,
         explanation:"31 has no divisors other than 1 and itself; the others factor as $3\\times7$, $3^3$, $3\\times11$." },
@@ -1009,6 +1226,14 @@
   let currentVisual = null; // {type:'plot'|'chart', spec, canvas}
   let sheetAnswersVisible = true;
   let pendingDeleteId = null;
+  // library browser state
+  let libView = 'grid';   // grid | list | compact
+  let libQuery = '';
+  let libFolder = 'all';
+  let libSort = 'created';
+  let libDir = 'desc';
+  let lastVisibleList = [];
+  let promptCb = null;
 
   /* ============================================================
      THEME
@@ -1126,69 +1351,315 @@
   }
   async function saveLibraryIndex(){ await sSet('deckIndex', JSON.stringify(library)); }
 
-  function renderLibrary(){
-    const wrap = $('libraryWrap');
-    if(!library.length){
-      wrap.innerHTML = `
-        <div class="empty-state">
-          <div class="glyph"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="14" height="17" rx="2" transform="rotate(-8 3 5)"/><rect x="7" y="2" width="14" height="17" rx="2"/></svg></div>
-          <h2>Your catalog is empty</h2>
-          <p>Bring your own deck as JSON — LaTeX, chemistry notation, graphs, and multiple choice all supported — or start with a sample deck.</p>
-          <div class="empty-actions">
-            <button class="btn primary" id="loadSampleBtn">Load sample deck</button>
-            <button class="btn" id="emptyImportBtn">Import JSON</button>
-          </div>
-        </div>`;
-      $('loadSampleBtn').addEventListener('click', loadSampleDeck);
-      $('emptyImportBtn').addEventListener('click', openImportModal);
-      return;
-    }
-    const groups = {};
-    library.forEach(d => { const f = d.folder || 'Unsorted'; (groups[f] = groups[f]||[]).push(d); });
-    const folderNames = Object.keys(groups).sort((a,b)=> a==='Unsorted' ? 1 : b==='Unsorted' ? -1 : a.localeCompare(b));
-    wrap.innerHTML = folderNames.map(fn => `
-      <div class="folder-section">
-        <div class="folder-title">${escapeHtml(fn)} · ${groups[fn].length}</div>
-        <div class="deck-grid">
-          ${groups[fn].map(d => deckCardHTML(d)).join('')}
-        </div>
-      </div>
-    `).join('');
-    library.forEach(d => {
-      const studyBtn = wrap.querySelector(`[data-study="${d.id}"]`);
-      const sheetBtn = wrap.querySelector(`[data-sheet="${d.id}"]`);
-      const quizBtn = wrap.querySelector(`[data-quiz="${d.id}"]`);
-      const exportBtn = wrap.querySelector(`[data-export="${d.id}"]`);
-      const deleteBtn = wrap.querySelector(`[data-delete="${d.id}"]`);
-      if(studyBtn) studyBtn.addEventListener('click', () => openDeck(d.id, 'study'));
-      if(sheetBtn) sheetBtn.addEventListener('click', () => openDeck(d.id, 'sheet'));
-      if(quizBtn) quizBtn.addEventListener('click', () => openDeck(d.id, 'quiz'));
-      if(exportBtn) exportBtn.addEventListener('click', () => exportDeck(d.id));
-      if(deleteBtn) deleteBtn.addEventListener('click', () => requestDeleteDeck(d.id, d.title));
-    });
+  /* ============================================================
+     LIBRARY BROWSER v2  (sort / search / filter / layouts)
+  ============================================================ */
+  function folderOf(d){ return (d.folder || '').trim(); }
+  function relDate(ms){
+    if(!ms) return 'not studied yet';
+    const diff = Date.now() - ms;
+    const m = Math.floor(diff/60000);
+    if(m < 1) return 'just now';
+    if(m < 60) return m + 'm ago';
+    const h = Math.floor(m/60);
+    if(h < 24) return h + 'h ago';
+    const d = Math.floor(h/24);
+    if(d < 7) return d + 'd ago';
+    if(d < 30) return Math.floor(d/7) + 'w ago';
+    return new Date(ms).toLocaleDateString();
   }
-
-  function deckCardHTML(d){
-    const pct = Math.round(d.masteryPct || 0);
+  function hueFor(id){
+    const palette=[['#2F6F52','#8FC26B'],['#C98A2C','#E5B557'],['#5B5A9C','#9C9CD1'],['#B24C4C','#D98A8A'],['#3D7EA6','#7FB6D8'],['#2A6F9E','#7FD3E5']];
+    let h=0; for(let i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0;
+    return palette[h%palette.length];
+  }
+  function deckStats(cards){ let mcq=0,basic=0,visual=0; cards.forEach(c=>{ if(c.type==='mcq')mcq++; else basic++; if(c.plot||c.chart||c.svg)visual++; }); return {mcq,basic,visual}; }
+  function computeLibraryStats(){
+    let cards=0, msum=0, mcount=0, recent=0;
+    library.forEach(d=>{ cards += d.count||0; if((d.masteryPct||0)>0){ msum+=d.masteryPct; mcount++; }
+      if(d.lastStudied && (Date.now()-d.lastStudied) < 7*86400000) recent++; });
+    return { decks: library.length, cards, avg: mcount?Math.round(msum/mcount):0, recent };
+  }
+  function visibleLibraryList(){
+    let arr = library.slice();
+    const q = libQuery.trim().toLowerCase();
+    if(q) arr = arr.filter(d => (d.title+' '+(d.folder||'')).toLowerCase().includes(q));
+    if(libFolder !== 'all') arr = arr.filter(d => folderOf(d) === libFolder);
+    const mult = libDir==='asc' ? 1 : -1;
+    const key = d => {
+      if(libSort==='alpha') return (d.title||'').toLowerCase();
+      if(libSort==='recency') return d.lastStudied||0;
+      if(libSort==='mastery') return d.masteryPct||0;
+      return d.createdAt||0;
+    };
+    arr.sort((a,b)=>{ const av=key(a), bv=key(b);
+      if(av===bv) return (b.createdAt||0)-(a.createdAt||0);
+      if(typeof av==='string' && typeof bv==='string') return String(av).localeCompare(String(bv))*mult;
+      return ((av-bv))*mult; });
+    return arr;
+  }
+  function libraryToolbarHTML(){
+    const folderOpts = ['all'].concat([...new Set(library.map(folderOf).filter(Boolean))].sort((a,b)=>a.localeCompare(b)));
+    const desc = libDir==='desc';
     return `
-      <div class="deck-card">
-        <div class="deck-card-head">
-          <div><h3>${escapeHtml(d.title)}</h3><div class="count">${d.count} card${d.count===1?'':'s'}</div></div>
-          <div class="ring" style="--pct:${pct}" data-pct="${pct}%"></div>
+      <div class="lib-toolbar">
+        <input class="lib-search" id="libSearch" type="search" value="${escapeHtml(libQuery)}" placeholder="Search decks and folders…" autocomplete="off">
+        <button class="btn soft" id="libClearBtn" title="Reset filters & sort">Reset</button>
+        <div class="lib-meta" id="libMeta">${lastVisibleList.length} of <b>${library.length}</b> deck${library.length===1?'':'s'}</div>
+      </div>
+      <div class="lib-toolbar" style="margin-top:-8px;flex-wrap:wrap">
+        <span class="sort-badge">Sort</span>
+        <div class="seg">
+          <button data-s="created" class="${libSort==='created'?'on':''}" title="Newest / oldest first">Date</button>
+          <button data-s="alpha" class="${libSort==='alpha'?'on':''}" title="A–Z">A–Z</button>
+          <button data-s="mastery" class="${libSort==='mastery'?'on':''}" title="Best mastered first">Mastery</button>
+          <button data-s="recency" class="${libSort==='recency'?'on':''}" title="Recently studied first">Recent</button>
         </div>
-        <div class="deck-card-actions">
-          <button class="btn primary" data-study="${d.id}">Study</button>
-          <button class="btn" data-sheet="${d.id}" title="Study all questions and answers in rows">Rows</button>
-          <button class="btn" data-quiz="${d.id}">Quiz</button>
-          <button class="btn icon-only" data-export="${d.id}" title="Export JSON">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
-          <button class="btn icon-only danger" data-delete="${d.id}" title="Delete deck">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
+        <div class="seg" title="Direction">
+          <button data-d="desc" class="${desc?'on':''}" title="Highest / newest first">${desc?'↓':'Newest first ↓'}</button>
+          <button data-d="asc" class="${!desc?'on':''}" title="Oldest / lowest first">${desc?'Oldest ↑':'↑'}</button>
+        </div>
+        <span class="sort-badge" style="margin-left:6px">Folder</span>
+        <div class="select-wrap">
+          <select class="fold-select" id="folderSelect" title="Filter by folder" aria-label="Filter by folder">
+            <option value="all" ${libFolder==='all'?'selected':''}>All folders (${library.length})</option>
+            ${folderOpts.filter(f=>f!=='all').map(f=>`<option value="${escAttr(f)}" ${libFolder===f?'selected':''}>${escapeHtml(f)} (${library.filter(d=>folderOf(d)===f).length})</option>`).join('')}
+          </select>
+        </div>
+        <span class="sort-badge" style="margin-left:6px">View</span>
+        <div class="seg">
+          <button data-v="grid" class="${libView==='grid'?'on':''}" title="Card grid">Grid</button>
+          <button data-v="list" class="${libView==='list'?'on':''}" title="Compact list">List</button>
+          <button data-v="compact" class="${libView==='compact'?'on':''}" title="Dense grid">Compact</button>
         </div>
       </div>`;
   }
+  function groupFolders(list){
+    const groups = {};
+    list.forEach(d => { const f = folderOf(d) || 'Unsorted'; (groups[f]=groups[f]||[]).push(d); });
+    let names = Object.keys(groups);
+    const mult = libDir === 'desc' ? -1 : 1;
+    const sink = (a,b)=> a==='Unsorted' ? 1 : b==='Unsorted' ? -1 : 0;
+    if(libSort === 'created' || libSort === 'recency'){
+      const secVal = g => g.reduce((mx,d)=>{ const v = libSort==='created' ? (d.createdAt||0) : (d.lastStudied||0); return Math.max(mx,v); }, 0);
+      names = names.sort((a,b)=>{ const s = sink(a,b); if(s) return s; return (secVal(groups[a])-secVal(groups[b]))*mult || a.localeCompare(b); });
+    } else if(libSort === 'mastery'){
+      const secVal = g => Math.max.apply(null, g.map(d=>d.masteryPct||0));
+      names = names.sort((a,b)=>{ const s = sink(a,b); if(s) return s; return (secVal(groups[a])-secVal(groups[b]))*mult || a.localeCompare(b); });
+    } else {
+      names = names.sort((a,b)=> sink(a,b) || a.localeCompare(b));
+    }
+    return { groups, names };
+  }
+  function deckCardHTML(d){
+    const pct = Math.round(d.masteryPct||0);
+    const [ca,cb] = hueFor(d.id);
+    const when = relDate(d.lastStudied);
+    return `
+      <div class="deck-card" data-card="${d.id}" style="--card-a:${ca};--card-b:${cb}">
+        <div class="deck-card-head">
+          <div style="min-width:0;flex:1">
+            <h3>${escapeHtml(d.title)}</h3>
+            <div class="deck-meta" style="margin-top:6px"><span class="deck-folder-chip">${escapeHtml(folderOf(d)||'Unsorted')}</span><span class="mdot"></span><span>${d.count} card${d.count===1?'':'s'}</span></div>
+            <div class="deck-meta" style="margin-top:5px"><span class="${d.lastStudied?'recent':''}">${when}</span></div>
+          </div>
+          <div class="ring" style="--pct:${pct}" data-pct="${pct}%" title="${pct}% mastered"></div>
+        </div>
+        <div class="mini-meter"><i style="width:${pct}%"></i></div>
+        <div class="deck-card-actions">
+          <button class="btn primary" data-study="${d.id}">Study</button>
+          <button class="btn" data-quiz="${d.id}">Quiz</button>
+          <button class="btn" data-sheet="${d.id}" title="Read every question & answer">Rows</button>
+          <button class="btn icon-only menu-toggle" data-more="${d.id}" title="More actions">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+          </button>
+        </div>
+        <div class="deck-extra" data-extra="${d.id}">
+          <button class="btn" data-dup="${d.id}" title="Duplicate this deck (fresh progress)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Duplicate</button>
+          <button class="btn" data-rename="${d.id}" title="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>Rename</button>
+          <button class="btn" data-export="${d.id}" title="Export as JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button>
+          <button class="btn danger" data-delete="${d.id}" title="Delete deck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete</button>
+        </div>
+      </div>`;
+  }
+  function listRowHTML(d){
+    const [ca,cb]=hueFor(d.id); const pct=Math.round(d.masteryPct||0);
+    return `
+      <div class="deck-item" data-card="${d.id}">
+        <div class="fold-ico" style="background:linear-gradient(135deg,${ca},${cb})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13l-3-2-3 2-3-2-3 2z"/></svg>
+        </div>
+        <div class="di-body">
+          <div class="di-title">${escapeHtml(d.title)}</div>
+          <div class="di-sub"><span class="pill">${escapeHtml(folderOf(d)||'Unsorted')}</span><span>${d.count} cards</span><span class="mdot"></span><span>${relDate(d.lastStudied)}</span></div>
+        </div>
+        <div class="di-right">
+          <div class="ring" style="--pct:${pct};width:32px;height:32px;--pct:${pct}" data-pct="${pct}%"></div>
+          <button class="btn primary" data-study="${d.id}" style="min-height:34px">Study</button>
+          <button class="btn" data-quiz="${d.id}" style="min-height:34px">Quiz</button>
+        </div>
+      </div>`;
+  }
+  function emptyLibraryHTML(){
+    return `
+      <div class="empty-state">
+        <div class="glyph"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="14" height="17" rx="2" transform="rotate(-8 3 5)"/><rect x="7" y="2" width="14" height="17" rx="2"/></svg></div>
+        <h2>Your catalog is empty</h2>
+        <p>Bring your own deck as JSON — LaTeX, chemistry, graphs and multiple choice supported — or start with the sample deck.</p>
+        <div class="empty-actions">
+          <button class="btn primary" id="loadSampleBtn">Load sample deck</button>
+          <button class="btn" id="emptyImportBtn">Import JSON</button>
+        </div>
+      </div>`;
+  }
+  function renderLibrary(){
+    const wrap = $('libraryWrap');
+    if(!wrap) return;
+    if(!library.length){
+      wrap.className = '';
+      wrap.innerHTML = emptyLibraryHTML();
+      const a=$('loadSampleBtn'); if(a) a.addEventListener('click', loadSampleDeck);
+      const b=$('emptyImportBtn'); if(b) b.addEventListener('click', openImportModal);
+      return;
+    }
+    const stats = computeLibraryStats();
+    const list = visibleLibraryList();
+    lastVisibleList = list;
+    const isList = libView === 'list';
+    wrap.className = libView==='compact' ? 'lib-compact' : '';
+    let html = `<div class="lib-hero">
+        <div class="stat-tile" style="--tile:var(--emerald)"><span class="sv">${stats.decks}</span><span class="sl">Decks</span></div>
+        <div class="stat-tile" style="--tile:var(--amber)"><span class="sv">${stats.cards}</span><span class="sl">Flashcards</span></div>
+        <div class="stat-tile" style="--tile:var(--emerald-bright)"><span class="sv">${stats.avg}%</span><span class="sl">Avg mastery</span></div>
+        <div class="stat-tile flame" style="--tile:var(--azure)"><span class="sv">${stats.recent}</span><span class="sl">Studied this week</span></div>
+      </div>`;
+    html += libraryToolbarHTML();
+    if(list.length === 0){
+      html += `<div class="empty-state" style="margin:14px auto"><div class="glyph"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg></div><h2>No decks match</h2><p>Try a different search or folder.</p><div class="empty-actions"><button class="btn" id="clearFilterBtn">Reset library</button></div></div>`;
+    } else {
+      const {groups, names} = groupFolders(list);
+      html += folderSectionHTML(names, groups, isList);
+    }
+    wrap.innerHTML = html;
+    bindLibraryControls();
+    bindCardActions(list);
+    renderMath(wrap);
+  }
+  function folderSectionHTML(names, groups, isList){
+    return names.map(fn => `
+      <div class="folder-section">
+        <div class="folder-title"><span class="fdot"></span>${escapeHtml(fn)} <span>&middot; ${groups[fn].length}</span></div>
+        ${isList ? `<div class="deck-list">${groups[fn].map(listRowHTML).join('')}</div>`
+                 : `<div class="deck-grid">${groups[fn].map(deckCardHTML).join('')}</div>`}
+      </div>`).join('');
+  }
+  function resetLibraryFilters(){
+    libQuery=''; libFolder='all'; libSort='created'; libDir='desc';
+  }
+  function bindLibraryControls(){
+    const wrap=$('libraryWrap');
+    const s=$('libSearch');
+    if(s) s.addEventListener('input', ()=>{ libQuery=s.value; renderLibrary(); });
+    const r=$('libClearBtn'); if(r) r.addEventListener('click', ()=>{ resetLibraryFilters(); renderLibrary(); showToast('Library reset — newest first'); });
+    const fs=$('folderSelect'); if(fs) fs.addEventListener('change', ()=>{ libFolder = fs.value; renderLibrary(); });
+    const cf=$('clearFilterBtn'); if(cf) cf.addEventListener('click', ()=>{ resetLibraryFilters(); renderLibrary(); });
+    wrap.querySelectorAll('.seg').forEach(seg=>{
+      seg.addEventListener('click',(e)=>{
+        const b = e.target.closest('button[data-s],[data-d],[data-f],[data-v]');
+        if(!b) return;
+        if(b.dataset.s!==undefined){ libSort=b.dataset.s; if(libSort==='created') libDir='desc'; renderLibrary(); }
+        else if(b.dataset.d!==undefined){ libDir=b.dataset.d; renderLibrary(); }
+        else if(b.dataset.f!==undefined){ libFolder=b.dataset.f; renderLibrary(); }
+        else if(b.dataset.v!==undefined){ libView=b.dataset.v; sSet('settings:libView', libView); renderLibrary(); }
+      });
+    });
+  }
+  function bindCardActions(list){
+    const wrap=$('libraryWrap'); if(!wrap) return;
+    list.forEach(d=>{
+      const id=d.id;
+      const bind=(sel,fn)=>{ const el=wrap.querySelector(`[data-${sel}="${id}"]`); if(el) el.addEventListener('click', (ev)=>{ if(ev&&ev.stopPropagation) ev.stopPropagation(); fn(); }); };
+      bind('study', ()=> openDeck(id,'study'));
+      bind('quiz', ()=> openDeck(id,'quiz'));
+      bind('sheet', ()=> openDeck(id,'sheet'));
+      bind('export', ()=> exportDeck(id));
+      bind('delete', ()=> requestDeleteDeck(id, d.title));
+      bind('dup', ()=> duplicateDeck(id));
+      bind('rename', ()=> openRename(id));
+    });
+    wrap.querySelectorAll('.menu-toggle').forEach(b=>{
+      b.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        const card = b.closest('[data-card]');
+        if(!card) return;
+        const open = card.classList.toggle('menu-open');
+        b.classList.toggle('on', open);
+      });
+    });
+  }
+
+  /* ---------- confetti ---------- */
+  function confetti(count){
+    const layer=$('confettiLayer'); if(!layer) return;
+    const colors=['#2F6F52','#C98A2C','#3D7EA6','#B24C4C','#8FC26B','#F1EEE6'];
+    const n = count || 150;
+    for(let i=0;i<n;i++){
+      const p=document.createElement('span');
+      const size=6+Math.random()*7;
+      p.style.cssText=`position:absolute;left:${Math.random()*100}%;top:-24px;width:${size}px;height:${Math.max(4,size*0.42)}px;background:${colors[i%colors.length]};border-radius:2px;opacity:${0.7+Math.random()*0.3};will-change:transform;`;
+      layer.appendChild(p);
+      const dur=2400+Math.random()*2000; const delay=Math.random()*600; const dx=(Math.random()-0.5)*10;
+      const anim=p.animate([
+        { transform:'translateY(0) translateX(0) rotate(0)' },
+        { transform:`translateY(${(window.innerHeight||900)+80}px) translateX(${dx*40}px) rotate(${(Math.random()*900-450).toFixed(0)}deg)`, opacity:0.15 }
+      ], { duration:dur, delay, easing:'cubic-bezier(.15,.6,.35,1)' });
+      anim.onfinish=()=>p.remove();
+    }
+    setTimeout(()=>{ layer.innerHTML=''; }, 8000);
+  }
+
+  /* ---------- rename / duplicate ---------- */
+  function openPrompt(title, value, label){
+    $('promptTitle').textContent = title;
+    $('promptInput').value = value || '';
+    $('promptLabel').textContent = label || 'Name';
+    $('promptBackdrop').classList.add('open');
+    setTimeout(()=>{ const el=$('promptInput'); el.focus(); el.select(); }, 60);
+  }
+  function closePrompt(){ $('promptBackdrop').classList.remove('open'); promptCb=null; }
+  function openRename(id){
+    const d = library.find(o=>o.id===id); if(!d) return;
+    promptCb = (val)=>{ val=(val||'').trim(); if(!val || val===d.title) return;
+      d.title = val; saveLibraryIndex(); renderLibrary(); renderTopbar(); showToast('Deck renamed'); };
+    openPrompt('Rename deck', d.title, 'New name');
+  }
+  function duplicateDeck(id){
+    (async()=>{
+      const raw = await sGet('deck:'+id);
+      if(!raw){ showToast('Could not duplicate that deck.'); return; }
+      const deck = JSON.parse(raw);
+      const newId = uid();
+      const copy = { id:newId, title:(deck.title||'Deck')+' (copy)', folder: deck.folder||'', cards: deck.cards.map(c=>({ type: c.type || 'basic', ...c })) };
+      await sSet('deck:'+newId, JSON.stringify(copy));
+      await sSet('progress:'+newId, JSON.stringify({ grades:{} }));
+      library.push({ id:newId, title:copy.title, folder:copy.folder, count:copy.cards.length, createdAt: Date.now(), masteryPct: 0, lastStudied: null });
+      await saveLibraryIndex();
+      renderLibrary(); renderTopbar();
+      showToast('Duplicated — starts fresh progress');
+    })();
+  }
+
+  /* wiring for prompt modal */
+  (function bindPromptModal(){
+    const close=()=>closePrompt();
+    $('promptClose').addEventListener('click', close);
+    $('promptCancel').addEventListener('click', close);
+    $('promptOk').addEventListener('click', ()=>{
+      if(!promptCb) return; const cb=promptCb; closePrompt(); cb($('promptInput').value);
+    });
+    $('promptBackdrop').addEventListener('click', (e)=>{ if(e.target === $('promptBackdrop')) close(); });
+    $('promptInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); $('promptOk').click(); } if(e.key==='Escape') close(); });
+  })();
 
   /* ============================================================
      DECK CRUD
@@ -1215,14 +1686,17 @@
   async function saveNewDeck(data, folderOverride){
     validateDeck(data);
     const id = uid();
+    const now = Date.now();
     const deckObj = {
       id, title: data.title || 'Untitled Deck',
       folder: (folderOverride || data.folder || '').trim(),
       cards: data.cards.map(c => ({ type: c.type || 'basic', ...c }))
     };
+    const st = deckStats(deckObj.cards);
     await sSet('deck:'+id, JSON.stringify(deckObj));
     await sSet('progress:'+id, JSON.stringify({ grades:{} }));
-    library.push({ id, title: deckObj.title, folder: deckObj.folder, count: deckObj.cards.length, createdAt: Date.now(), masteryPct: 0 });
+    library.push({ id, title: deckObj.title, folder: deckObj.folder, count: deckObj.cards.length,
+      createdAt: now, lastStudied: null, masteryPct: 0, mcq: st.mcq, basic: st.basic, newCount: deckObj.cards.length });
     await saveLibraryIndex();
     return id;
   }
@@ -1253,7 +1727,11 @@
     const goodCount = Object.values(progressMap).filter(g=>g==='good').length;
     const pct = total ? Math.round((goodCount/total)*100) : 0;
     const entry = library.find(d => d.id === activeDeck.id);
-    if(entry){ entry.masteryPct = pct; await saveLibraryIndex(); }
+    if(entry){
+      entry.masteryPct = pct;
+      entry.lastStudied = Date.now();
+      await saveLibraryIndex();
+    }
   }
 
   function exportDeck(id){
@@ -1452,7 +1930,7 @@
         ${visualBlock}
         <div class="mcq-options" id="mcqOptions"></div>
         <div id="mcqResultBanner"></div>
-        <div class="flip-hint">${alreadyAnswered ? 'Tap card or press space to see explanation \u21BB' : 'Choose an answer'}</div>
+        <div class="flip-hint">${alreadyAnswered ? 'Tap card or press space to see explanation ↻' : 'Choose an answer'}</div>
       `;
       const optWrap = faceFront.querySelector('#mcqOptions');
       const letters = ['A','B','C','D','E','F'];
@@ -1528,13 +2006,13 @@
     if(type === 'basic'){
       if(session.kind === 'study'){
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Forgot <span class="grade-key">F</span></button>
-          <button class="grade-btn hard" data-g="hard">\u25D0 Hard <span class="grade-key">H</span></button>
-          <button class="grade-btn good" data-g="good">\u2713 Good <span class="grade-key">G</span></button>`;
+          <button class="grade-btn forgot" data-g="forgot">✗ Forgot <span class="grade-key">F</span></button>
+          <button class="grade-btn hard" data-g="hard">◐ Hard <span class="grade-key">H</span></button>
+          <button class="grade-btn good" data-g="good">✓ Good <span class="grade-key">G</span></button>`;
       } else {
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Incorrect <span class="grade-key">F</span></button>
-          <button class="grade-btn good" data-g="good">\u2713 Correct <span class="grade-key">G</span></button>`;
+          <button class="grade-btn forgot" data-g="forgot">✗ Incorrect <span class="grade-key">F</span></button>
+          <button class="grade-btn good" data-g="good">✓ Correct <span class="grade-key">G</span></button>`;
       }
       gradeRow.querySelectorAll('.grade-btn').forEach(b => b.addEventListener('click', () => gradeCard(idx, b.dataset.g)));
       if(session.grades[idx]) gradeRow.classList.add('show');
@@ -1546,13 +2024,13 @@
       const autoGrade = session.mcqAnswers[idx] === c.answer ? 'good' : 'forgot';
       if(session.kind === 'study'){
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Forgot <span class="grade-key">F</span></button>
-          <button class="grade-btn hard" data-g="hard">\u25D0 Hard <span class="grade-key">H</span></button>
-          <button class="grade-btn good" data-g="good">\u2713 Good <span class="grade-key">G</span></button>`;
+          <button class="grade-btn forgot" data-g="forgot">✗ Forgot <span class="grade-key">F</span></button>
+          <button class="grade-btn hard" data-g="hard">◐ Hard <span class="grade-key">H</span></button>
+          <button class="grade-btn good" data-g="good">✓ Good <span class="grade-key">G</span></button>`;
       } else {
         gradeRow.innerHTML = `
-          <button class="grade-btn forgot" data-g="forgot">\u2717 Incorrect <span class="grade-key">F</span></button>
-          <button class="grade-btn good" data-g="good">\u2713 Correct <span class="grade-key">G</span></button>`;
+          <button class="grade-btn forgot" data-g="forgot">✗ Incorrect <span class="grade-key">F</span></button>
+          <button class="grade-btn good" data-g="good">✓ Correct <span class="grade-key">G</span></button>`;
       }
       gradeRow.querySelectorAll('.grade-btn').forEach(b => b.addEventListener('click', () => gradeMcq(idx, b.dataset.g)));
       // Highlight the auto-assigned grade
@@ -1634,12 +2112,12 @@
       if(isCorrect){
         banner.innerHTML = '<div class="mcq-result-banner correct-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Correct!</div>';
       } else {
-        banner.innerHTML = '<div class="mcq-result-banner wrong-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Incorrect \u2014 answer is ' + correctLabel + '</div>';
+        banner.innerHTML = '<div class="mcq-result-banner wrong-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Incorrect — answer is ' + correctLabel + '</div>';
       }
     }
     // Update flip hint
     const hint = faceFront.querySelector('.flip-hint');
-    if(hint) hint.textContent = 'Tap card or press space to see explanation \u21BB';
+    if(hint) hint.textContent = 'Tap card or press space to see explanation ↻';
     // Show flip button so user can flip to see explanation
     flipBtn.style.display = 'inline-flex';
     flipBtn.textContent = 'See explanation';
@@ -1672,9 +2150,9 @@
       <div class="card-label">Answer & Explanation</div>
       <div class="card-content small" style="font-size:14px;margin-bottom:8px;">${formatText(c.question)}</div>
       ${resultSummary}
-      <div style="margin:6px 0;font-size:13px;color:var(--paper-ink-soft);"><strong style="color:var(--emerald);">Correct answer: ${correctLabel}</strong> \u2014 ${formatText(c.options[c.answer])}</div>
+      <div style="margin:6px 0;font-size:13px;color:var(--paper-ink-soft);"><strong style="color:var(--emerald);">Correct answer: ${correctLabel}</strong> — ${formatText(c.options[c.answer])}</div>
       ${explanationHTML}
-      <div class="flip-hint">Tap card to flip back \u21BB</div>
+      <div class="flip-hint">Tap card to flip back ↻</div>
     `;
     renderMath(faceBack);
   }
@@ -1736,8 +2214,10 @@
       session.order.forEach(idx => { progressMap[idx] = session.grades[idx]; });
       await persistProgressAndMastery();
       renderRoundCompleteSummary();
+      if(session.order.length >= 3 && session.order.every(idx=>session.grades[idx]==='good')) confetti();
     } else {
       renderQuizResultsSummary();
+      if(session.order.length >= 3 && session.order.every(idx=>session.grades[idx]==='good')) confetti();
     }
   }
 
@@ -1905,6 +2385,8 @@
   async function init(){
     const savedTheme = await sGet('settings:theme');
     theme = savedTheme === 'light' ? 'light' : 'dark';
+    const lv = await sGet('settings:libView');
+    if(lv === 'list' || lv === 'compact' || lv === 'grid') libView = lv;
     document.documentElement.setAttribute('data-theme', theme);
     setView('library');
     await loadLibrary();
