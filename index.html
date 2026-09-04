@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -915,6 +914,39 @@
     </div>
   </div>
 
+  <!-- Backup & restore modal -->
+  <div class="modal-backdrop" id="backupBackdrop">
+    <div class="modal">
+      <div class="modal-head"><h3>Backup &amp; restore</h3><button class="modal-close" id="backupClose">&times;</button></div>
+      <div class="modal-body">
+        <p>Download a single JSON file holding <b>every deck and all study progress</b>, then restore it here on any device or browser.</p>
+        <button class="btn primary" id="downloadBackupBtn" style="width:100%;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download full backup
+        </button>
+        <span class="field-label" style="margin-top:12px">Restore from a backup file</span>
+        <button class="btn file-btn" style="width:100%;justify-content:center;">Choose a backup file<input type="file" id="backupFile" accept="application/json,.json"></button>
+        <span class="field-label">…or paste backup JSON</span>
+        <textarea id="backupJson" placeholder='Paste a Flësh backup here…' style="min-height:120px"></textarea>
+        <div class="modal-error" id="backupError"></div>
+        <p style="font-size:10.5px;margin-top:8px;margin-bottom:0">Restore adds any decks that aren't already in your library — your current decks are never overwritten.</p>
+      </div>
+      <div class="modal-foot"><button class="btn" id="backupCancel">Cancel</button><button class="btn primary" id="restoreBackupBtn">Restore backup</button></div>
+    </div>
+  </div>
+
+  <!-- Resume session modal -->
+  <div class="modal-backdrop" id="resumeBackdrop">
+    <div class="modal small">
+      <div class="modal-head"><h3 id="resumeTitle">Continue where you left off?</h3><button class="modal-close" id="resumeClose">&times;</button></div>
+      <div class="modal-body"><p id="resumeText" style="color:var(--ink-bright);font-size:13.5px;line-height:1.65;"></p></div>
+      <div class="modal-foot" style="justify-content:flex-end;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" id="resumeCancel">Cancel</button>
+        <button class="btn" id="resumeRestart">Restart</button>
+        <button class="btn primary" id="resumeContinue">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
   <div id="confettiLayer"></div>
 
@@ -1226,6 +1258,7 @@
   let currentVisual = null; // {type:'plot'|'chart', spec, canvas}
   let sheetAnswersVisible = true;
   let pendingDeleteId = null;
+  let pendingResume = null;   // {deckId, kind} awaiting Continue/Restart
   // library browser state
   let libView = 'grid';   // grid | list | compact
   let libQuery = '';
@@ -1287,7 +1320,7 @@
       backBtn.hidden = true;
       titleEl.textContent = 'Flësh';
       subEl.textContent = library.length ? `${library.length} deck${library.length===1?'':'s'} in your library` : 'Import your first deck to begin';
-      right.innerHTML = `<button class="btn primary" id="newDeckBtn">+ New deck</button>` + themeToggleHTML();
+      right.innerHTML = `<button class="icon-btn" id="backupBtn" title="Backup &amp; restore all decks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></button><button class="btn primary" id="newDeckBtn">+ New deck</button>` + themeToggleHTML();
     } else if(view==='sheet'){
       backBtn.hidden = false;
       titleEl.textContent = activeDeck.title;
@@ -1322,6 +1355,8 @@
     if(t) t.addEventListener('click', () => applyTheme(theme==='dark' ? 'light' : 'dark'));
     const newDeckBtn = $('newDeckBtn');
     if(newDeckBtn) newDeckBtn.addEventListener('click', openImportModal);
+    const backupBtn = $('backupBtn');
+    if(backupBtn) backupBtn.addEventListener('click', openBackupModal);
     const shuffleBtn = $('shuffleBtn');
     if(shuffleBtn) shuffleBtn.addEventListener('click', () => {
       session.order = shuffleArray(session.order);
@@ -1334,6 +1369,7 @@
 
   function goLibrary(){
     if(session && session.kind==='quiz' && session.timerId){ clearInterval(session.timerId); }
+    if(session && activeDeck && !session.finished){ saveResumeNow(); }
     session = null; activeDeck = null; currentVisual = null;
     setView('library');
     renderTopbar();
@@ -1579,8 +1615,8 @@
     list.forEach(d=>{
       const id=d.id;
       const bind=(sel,fn)=>{ const el=wrap.querySelector(`[data-${sel}="${id}"]`); if(el) el.addEventListener('click', (ev)=>{ if(ev&&ev.stopPropagation) ev.stopPropagation(); fn(); }); };
-      bind('study', ()=> openDeck(id,'study'));
-      bind('quiz', ()=> openDeck(id,'quiz'));
+      bind('study', ()=> requestSessionStart(id,'study'));
+      bind('quiz', ()=> requestSessionStart(id,'quiz'));
       bind('sheet', ()=> openDeck(id,'sheet'));
       bind('export', ()=> exportDeck(id));
       bind('delete', ()=> requestDeleteDeck(id, d.title));
@@ -1761,6 +1797,7 @@
     const id = pendingDeleteId; pendingDeleteId = null;
     await sDelete('deck:'+id);
     await sDelete('progress:'+id);
+    await sDelete('resume:'+id);
     library = library.filter(d => d.id !== id);
     await saveLibraryIndex();
     renderLibrary(); renderTopbar();
@@ -1877,13 +1914,13 @@
      SESSION (STUDY + QUIZ SHARED ENGINE)
   ============================================================ */
   function startStudySession(indices, mode){
-    session = { kind:'study', order: indices.slice(), pos:0, mode, grades:{}, mcqAnswers:{} };
+    session = { kind:'study', order: indices.slice(), pos:0, mode, grades:{}, mcqAnswers:{}, finished:false };
     setView('session'); renderTopbar(); renderSessionCard(false);
   }
   function startQuizSession(indices){
     const order = shuffleArray(indices);
     const timeLimit = Math.max(60, order.length * 20);
-    session = { kind:'quiz', order, pos:0, grades:{}, mcqAnswers:{}, timeLimit, remaining:timeLimit, startTime:Date.now(), timerId:null };
+    session = { kind:'quiz', order, pos:0, grades:{}, mcqAnswers:{}, timeLimit, remaining:timeLimit, startTime:Date.now(), timerId:null, finished:false };
     setView('session'); renderTopbar(); renderSessionCard(false);
     session.timerId = setInterval(tickQuizTimer, 1000);
     updateQuizTimerDisplay();
@@ -2173,12 +2210,12 @@
 
   function goNext(){
     if(!session) return;
-    if(session.pos < session.order.length - 1){ session.pos++; renderSessionCard('fwd'); }
+    if(session.pos < session.order.length - 1){ session.pos++; renderSessionCard('fwd'); markSessionDirty(); }
     else { finalizeSession(); }
   }
   function goPrev(){
     if(!session || session.kind === 'quiz') return;
-    if(session.pos > 0){ session.pos--; renderSessionCard('back'); }
+    if(session.pos > 0){ session.pos--; renderSessionCard('back'); markSessionDirty(); }
   }
 
   function gradeCurrentFromKeyboard(grade){
@@ -2206,6 +2243,8 @@
   }
 
   async function finalizeSession(){
+    session.finished = true;
+    if(activeDeck) await clearResumeDeck(activeDeck.id);
     if(session.kind === 'quiz' && session.timerId) clearInterval(session.timerId);
     // fill skipped
     session.order.forEach(idx => { if(!session.grades[idx]) session.grades[idx] = 'skipped'; });
@@ -2220,6 +2259,156 @@
       if(session.order.length >= 3 && session.order.every(idx=>session.grades[idx]==='good')) confetti();
     }
   }
+
+  /* ============================================================
+     RESUME WHERE YOU LEFT OFF + FULL-LIBRARY BACKUP
+  ============================================================ */
+  function sessionSnapshot(){
+    if(!session || !activeDeck) return null;
+    return {
+      deckId: activeDeck.id, kind: session.kind, mode: session.mode || null,
+      order: session.order.slice(), pos: session.pos,
+      grades: Object.assign({}, session.grades), mcqAnswers: Object.assign({}, session.mcqAnswers || {}),
+      timeLimit: session.timeLimit || 0, remaining: (typeof session.remaining==='number')?session.remaining:0,
+      savedAt: Date.now()
+    };
+  }
+  async function saveResumeNow(){
+    const snap = sessionSnapshot(); if(!snap) return;
+    await sSet('resume:'+snap.deckId, JSON.stringify(snap));
+  }
+  async function clearResumeDeck(deckId){ if(deckId) await sDelete('resume:'+deckId); }
+  function markSessionDirty(){ saveResumeNow(); }
+
+  function deckTitleOf(id){ const e=library.find(d=>d.id===id); return e?e.title:'this deck'; }
+
+  function requestSessionStart(id, kind){
+    (async()=>{
+      const raw = await sGet('resume:'+id);
+      let snap = null; if(raw){ try{ snap=JSON.parse(raw); }catch(e){ snap=null; } }
+      if(!snap || snap.kind !== kind){ openDeck(id, kind==='quiz'?'quiz':'study'); return; }
+      pendingResume = { deckId:id, kind };
+      const left = Math.max(1, (snap.order||[]).length - snap.pos);
+      $('resumeTitle').textContent = 'Continue where you left off?';
+      $('resumeText').innerHTML = 'You have an unfinished <b>' + (kind==='quiz'?'timed quiz':'study session') + '</b> in <b>' + escapeHtml(deckTitleOf(id)) + '</b> with <b>' + left + '</b> card' + (left===1?'':'s') + ' remaining. Pick up right where you stopped, or start again from the top.';
+      $('resumeBackdrop').classList.add('open');
+    })();
+  }
+  function closeResumeModal(){ $('resumeBackdrop').classList.remove('open'); pendingResume=null; }
+  async function doResumeSession(){
+    if(!pendingResume) return;
+    const {deckId, kind} = pendingResume; pendingResume=null; closeResumeModal();
+    const raw = await sGet('resume:'+deckId);
+    let snap=null; try{ snap = raw ? JSON.parse(raw) : null; }catch(e){ snap=null; }
+    if(!snap){ openDeck(deckId, kind==='quiz'?'quiz':'study'); return; }
+    await openDeckResume(deckId, snap);
+  }
+  async function doRestartSession(){
+    if(!pendingResume) return;
+    const {deckId, kind} = pendingResume; pendingResume=null; closeResumeModal();
+    await clearResumeDeck(deckId);
+    openDeck(deckId, kind==='quiz'?'quiz':'study');
+  }
+  async function openDeckResume(deckId, snap){
+    const raw = await sGet('deck:'+deckId);
+    if(!raw){ showToast('That deck no longer exists.'); return; }
+    activeDeck = JSON.parse(raw);
+    const praw = await sGet('progress:'+deckId); let prog={grades:{}};
+    try{ prog = praw ? JSON.parse(praw) : {grades:{}}; }catch(e){}
+    progressMap = prog.grades || {};
+    const order = (snap.order||[]).slice();
+    session = { kind:snap.kind, order, pos: Math.min(snap.pos||0, Math.max(0,order.length-1)),
+                mode: snap.mode||'full', grades: Object.assign({}, snap.grades||{}),
+                mcqAnswers: Object.assign({}, snap.mcqAnswers||{}), finished:false };
+    if(!order.length){ goLibrary(); return; }
+    if(snap.kind==='quiz'){
+      const elapsed=(Date.now()-(snap.savedAt||Date.now()))/1000;
+      const tl = snap.timeLimit || Math.max(60, order.length*20);
+      session.timeLimit = tl;
+      session.remaining = Math.max(0, Math.floor((snap.remaining!=null?snap.remaining:tl) - elapsed));
+      session.startTime = Date.now(); session.timerId = null;
+      setView('session'); renderTopbar(); renderSessionCard(false);
+      session.timerId = setInterval(tickQuizTimer, 1000);
+      updateQuizTimerDisplay();
+    } else {
+      setView('session'); renderTopbar(); renderSessionCard(false);
+    }
+    markSessionDirty();
+  }
+  (function bindResumeModal(){
+    $('resumeContinue').addEventListener('click', doResumeSession);
+    $('resumeRestart').addEventListener('click', doRestartSession);
+    $('resumeClose').addEventListener('click', closeResumeModal);
+    $('resumeCancel').addEventListener('click', closeResumeModal);
+    $('resumeBackdrop').addEventListener('click', e=>{ if(e.target===$('resumeBackdrop')) closeResumeModal(); });
+  })();
+
+  /* ---------- full-library backup ---------- */
+  async function exportAllBackup(){
+    const decks=[];
+    for(const entry of library){
+      const raw = await sGet('deck:'+entry.id); if(!raw) continue;
+      const praw = await sGet('progress:'+entry.id); let prog={grades:{}};
+      try{ prog = praw ? JSON.parse(praw) : {grades:{}}; }catch(e){}
+      decks.push({ deck: JSON.parse(raw), progress: prog, createdAt: entry.createdAt||Date.now(), lastStudied: entry.lastStudied||null, masteryPct: entry.masteryPct||0 });
+    }
+    const data = { app:'FleshBackup', version:1, exportedAt:new Date().toISOString(), decks };
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url;
+    a.download = 'flesh-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    showToast(decks.length ? ('Backup downloaded — '+decks.length+' deck'+(decks.length===1?'':'s')) : 'Nothing to back up yet');
+  }
+  async function applyBackupText(text){
+    let data; try{ data = JSON.parse(text); }catch(e){ throw new Error('Invalid JSON: '+e.message); }
+    if(data.app !== 'FleshBackup' || !Array.isArray(data.decks)) throw new Error('That does not look like a Flësh backup file.');
+    let added=0, skipped=0;
+    for(const d of data.decks){
+      const deckObj = d && d.deck;
+      if(!deckObj || !Array.isArray(deckObj.cards)){ skipped++; continue; }
+      const id = deckObj.id;
+      if(library.some(e=>e.id===id)){ skipped++; continue; }
+      await sSet('deck:'+id, JSON.stringify(deckObj));
+      await sSet('progress:'+id, JSON.stringify((d&&d.progress)||{grades:{}}));
+      const st = deckStats(deckObj.cards);
+      library.push({ id, title:deckObj.title||'Untitled Deck', folder:(deckObj.folder||'').trim(), count:deckObj.cards.length,
+        createdAt:(d&&d.createdAt)||Date.now(), lastStudied:(d&&d.lastStudied)||null, masteryPct:Math.round((d&&d.masteryPct)||0),
+        mcq:st.mcq, basic:st.basic, newCount:deckObj.cards.length });
+      added++;
+    }
+    await saveLibraryIndex();
+    return { added, skipped };
+  }
+  function openBackupModal(){ $('backupError').classList.remove('show'); $('backupJson').value=''; $('backupBackdrop').classList.add('open'); }
+  function closeBackupModal(){ $('backupBackdrop').classList.remove('open'); }
+  (function bindBackupModal(){
+    const close = ()=>closeBackupModal();
+    $('backupClose').addEventListener('click', close);
+    $('backupCancel').addEventListener('click', close);
+    $('backupBackdrop').addEventListener('click', e=>{ if(e.target===$('backupBackdrop')) close(); });
+    $('downloadBackupBtn').addEventListener('click', exportAllBackup);
+    const fi=$('backupFile');
+    if(fi) fi.addEventListener('change', e=>{
+      const f=e.target.files[0]; if(!f) return;
+      const rd=new FileReader();
+      rd.onload = ()=>{ $('backupJson').value = rd.result; };
+      rd.onerror = ()=>{ const err=$('backupError'); err.textContent='Could not read that file.'; err.classList.add('show'); };
+      rd.readAsText(f);
+    });
+    $('restoreBackupBtn').addEventListener('click', async ()=>{
+      const txt = $('backupJson').value.trim();
+      const err = $('backupError');
+      if(!txt){ err.textContent='Paste backup JSON or choose a file first.'; err.classList.add('show'); return; }
+      try{
+        const r = await applyBackupText(txt);
+        closeBackupModal(); renderLibrary(); renderTopbar();
+        showToast('Backup restored — added '+r.added+', skipped '+r.skipped+' existing');
+      }catch(e){ err.textContent = e.message; err.classList.add('show'); }
+    });
+  })();
+
+  window.addEventListener('beforeunload', ()=>{ if(session && activeDeck && !session.finished) saveResumeNow(); });
 
   /* ============================================================
      SUMMARY SCREENS
