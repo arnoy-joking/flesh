@@ -2695,6 +2695,8 @@
   let syncTimer = null;
   let lastSyncedAt = 0, lastUploadHash = '';
   let refreshTimer = null, refreshing = null;
+  let syncMuted = false;   // true while a sync writes back internal state; prevents self-triggering loops
+  let syncChangedDuringSync = false; // a real user change arrived while a sync was running
 
   function isSignedIn(){ return !!sbSession && !!sbSession.access_token; }
   async function ensureUser(){
@@ -2962,7 +2964,7 @@
   async function syncNow(force){
     if(!isSignedIn()) return;
     await ensureUser();
-    syncState.pushing=true; updateStatusUI();
+    syncState.pushing=true; syncMuted=true; updateStatusUI();
     try{
       const remote = await sbPull();
       let result = { changed:false, added:0, updated:0, deleted:0 };
@@ -2986,11 +2988,15 @@
         showToast('Sync needs a refresh — reopening the account panel and tapping Sync now.');
       }
     }
-    finally{ syncState.pushing=false; updateStatusUI(); }
+    finally{
+      syncState.pushing=false; syncMuted=false; updateStatusUI();
+      if(syncChangedDuringSync){ syncChangedDuringSync=false; syncState.dirty=true; clearTimeout(syncTimer); syncTimer=setTimeout(()=>{ if(isOnline()) syncNow(false); else updateStatusUI(); }, 700); }
+    }
   }
   let syncLastSummary=null;
   function syncMarkDirty(){
     if(!isSignedIn()) return;
+    if(syncMuted){ syncChangedDuringSync = true; syncState.dirty=true; return; } // flag for follow-up; don't reschedule mid-sync
     syncState.dirty = true; updateStatusUI();
     clearTimeout(syncTimer);
     syncTimer = setTimeout(()=>{ if(isOnline()) syncNow(false); else updateStatusUI(); }, 900);
@@ -3187,5 +3193,5 @@
 
 })();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a36ff3586c55aab8',t:'MTc4ODcyMzY4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
