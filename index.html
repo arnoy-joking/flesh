@@ -2710,6 +2710,9 @@
   }
 
   function sbAuthHeaders(token){
+    // If no token is passed, fall back to the current signed-in session so that
+    // every Supabase call is authenticated (required by RLS). Otherwise anon.
+    if(token === undefined) token = (sbSession ? sbSession.access_token : null);
     const h = { 'apikey': SUPABASE_ANON, 'Content-Type':'application/json' };
     if(token) h['Authorization'] = 'Bearer '+token;
     return h;
