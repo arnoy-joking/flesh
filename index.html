@@ -1030,6 +1030,10 @@
       <div class="modal-head"><h3>Account &amp; sync</h3><button class="modal-close" id="acctClose">&times;</button></div>
       <div class="modal-body">
         <div class="sync-statusline"><span class="sync-dot" id="acctDot"></span><span id="acctStatus"></span></div>
+        <div id="acctSyncRow" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <button class="btn primary" id="acctSyncBtn" style="flex:1;justify-content:center;">Sync now</button>
+        </div>
+        <p id="acctLastSynced" style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-muted);margin:0 0 10px;"></p>
         <p id="acctDetail" style="color:var(--ink-bright);font-size:13px;"></p>
         <div class="modal-error" id="acctError"></div>
       </div>
@@ -2689,6 +2693,8 @@
   let sbSession = null;        // {access_token, refresh_token, expires_at, user:{id,email,user_metadata}}
   let syncState = { online: (typeof navigator!=='undefined') ? navigator.onLine : true, dirty:false, pushing:false, error:null };
   let syncTimer = null;
+  let lastSyncedAt = 0, lastUploadHash = '';
+  let refreshTimer = null, refreshing = null;
 
   function isSignedIn(){ return !!sbSession && !!sbSession.access_token; }
   async function ensureUser(){
@@ -2735,18 +2741,20 @@
 
   async function authSignup(email, password, name){
     const data = await sbFetch('/auth/v1/signup', { method:'POST', body:{ email, password, data:{ name: name||'', full_name: name||'' } } });
-    if(data && data.access_token){ await sbSaveSession({ access_token:data.access_token, refresh_token:data.refresh_token, expires_at:(data.expires_in? Date.now()+data.expires_in*1000:0), user:data.user }); }
+    if(data && data.access_token){ await sbSaveSession({ access_token:data.access_token, refresh_token:data.refresh_token, expires_at:(data.expires_in? Date.now()+data.expires_in*1000:0), user:data.user }); scheduleTokenRefresh(); }
     else if(data && data.user){ /* confirmation required */ return 'confirm'; }
     return data;
   }
   async function authLogin(email, password){
     const data = await sbFetch('/auth/v1/token?grant_type=password', { method:'POST', body:{ email, password } });
     await sbSaveSession({ access_token:data.access_token, refresh_token:data.refresh_token, expires_at:(data.expires_in? Date.now()+data.expires_in*1000:0), user:data.user });
+    scheduleTokenRefresh();
     return data.user;
   }
   async function authRefresh(refresh_token){
     const data = await sbFetch('/auth/v1/token?grant_type=refresh_token', { method:'POST', body:{ refresh_token }, token:SUPABASE_ANON });
     await sbSaveSession({ access_token:data.access_token, refresh_token:data.refresh_token, expires_at:(data.expires_in? Date.now()+data.expires_in*1000:0), user:data.user });
+    scheduleTokenRefresh();
     return data.user;
   }
   async function authLogout(){
@@ -2888,17 +2896,62 @@
     return { changed, added, updated, deleted };
   }
   // ---- upload merged local state (idempotent upsert) ----
+  function scheduleTokenRefresh(){
+    clearTimeout(refreshTimer);
+    if(!sbSession || !sbSession.expires_at) return;
+    const delay = Math.max(30000, (sbSession.expires_at - Date.now()) - 60000); // 60s before expiry
+    refreshTimer = setTimeout(async ()=>{ try{ await refreshTokenNow(); }catch(e){} }, delay);
+  }
+  async function refreshTokenNow(){
+    if(!sbSession || !sbSession.refresh_token) return false;
+    if(refreshing) return refreshing;
+    refreshing = (async()=>{
+      try{ await authRefresh(sbSession.refresh_token); scheduleTokenRefresh(); return true; }
+      catch(e){ try{ await sbSaveSession(null); }catch(_){} return false; }
+    })();
+    try{ return await refreshing; } finally { refreshing=null; }
+  }
+  async function ensureFreshSession(){
+    // makes sure we have a valid-ish access token before a cloud call
+    if(!sbSession || !sbSession.access_token) return false;
+    if(!sbSession.user || !sbSession.user.id){
+      try{ const u = await sbFetch('/auth/v1/user'); if(u){ sbSession.user=u; await sbSaveSession(sbSession); } }catch(e){}
+    }
+    const exp = sbSession.expires_at||0;
+    if(exp && (exp - Date.now()) < 120000){ return await refreshTokenNow(); }
+    return true;
+  }
+  function payloadHash(o){ // cheap stable hash of serialized state for change-detection
+    let s2 = JSON.stringify(o), h=0;
+    for(let i=0;i<s2.length;i++){ h=((h<<5)-h + s2.charCodeAt(i))|0; }
+    return 'h'+h+'_'+s2.length;
+  }
+
   async function sbUpload(payload){
     const body = { owner: sbSession.user.id, payload, updated_at: nowIso() };
-    await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE, {
+    await ensureFreshSession();
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE, {
       method:'POST',
       headers: Object.assign(sbAuthHeaders(), { 'Prefer':'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify(body)
     });
+    if(res.status === 401){ // token expired mid-flight -> refresh once and retry
+      await refreshTokenNow();
+      const res2 = await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE, {
+        method:'POST',
+        headers: Object.assign(sbAuthHeaders(), { 'Prefer':'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify(body)
+      });
+      if(!res2.ok) throw new Error('Sync save failed ('+res2.status+')');
+      return;
+    }
+    if(!res.ok) throw new Error('Sync save failed ('+res.status+')');
   }
   async function sbPull(){
     if(!isSignedIn()) return null;
+    await ensureFreshSession();
     const res = await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE + '?select=owner,payload,updated_at&owner=eq.'+encodeURIComponent(sbSession.user.id)+'&limit=1', { headers: sbAuthHeaders() });
+    if(res.status === 401){ await refreshTokenNow(); return sbPull(); }
     if(!res.ok) throw new Error('Sync read failed ('+res.status+')');
     const arr = await res.json();
     if(arr && arr.length && arr[0].payload) return arr[0].payload;
@@ -2914,15 +2967,25 @@
       const remote = await sbPull();
       let result = { changed:false, added:0, updated:0, deleted:0 };
       if(remote && remote.v){ result = await mergeRemoteIntoLocal(remote); }
-      // Always push back the merged local state: it already reflects everything
-      // from the cloud plus any newer local edits, so uploads are idempotent and
-      // a device that went offline never loses its local changes.
       const payload = await serializeLocalState();
-      await sbUpload(payload);
+      const hash = payloadHash(payload);
+      const needUpload = force || result.changed || result.added>0 || result.deleted>0 || hash !== lastUploadHash;
+      if(needUpload){
+        await sbUpload(payload);
+        lastUploadHash = hash;
+      }
+      lastSyncedAt = Date.now();
+      try{ localStorage.setItem('fc_lastSynced', String(lastSyncedAt)); }catch(e){}
       syncState.error=null; syncState.dirty=false;
       if(result.changed){ renderTopbar(); renderLibrary(); renderMath($('libraryWrap')); }
       if(result.added||result.deleted||result.updated) syncLastSummary = result;
-    }catch(e){ syncState.dirty=true; syncState.error=e.message; }
+    }catch(e){
+      syncState.dirty=true; syncState.error=e.message;
+      if((e.message||'').indexOf('401')>=0 || /expired|log in/i.test(e.message)) {
+        // show a single clear notice so it isn't silent
+        showToast('Sync needs a refresh — reopening the account panel and tapping Sync now.');
+      }
+    }
     finally{ syncState.pushing=false; updateStatusUI(); }
   }
   let syncLastSummary=null;
@@ -2934,8 +2997,15 @@
   }
   function offlineNow(){ syncState.online = navigator.onLine; updateStatusUI();
     if(isOnline() && isSignedIn() && syncState.dirty) syncNow(false); }
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && isSignedIn() && isOnline() && syncState.dirty){ syncNow(false); } });
+  window.__forceSync = ()=> forceManualSync();
 
-  async function forceManualSync(){ await syncNow(true); if(syncState.error) showToast('Sync problem: '+syncState.error); else { const r=syncLastSummary; if(r&&(r.added||r.deleted||r.updated)) showToast('Merged from cloud — '+r.added+' new, '+r.updated+' updated, '+r.deleted+' deleted'); else showToast('Synced'); } }
+  async function forceManualSync(){
+    await syncNow(true);
+    updateStatusUI();
+    if(syncState.error) showToast('Sync problem: '+syncState.error);
+    else { const r=syncLastSummary; if(r&&(r.added||r.deleted||r.updated)) showToast('Merged from cloud — '+r.added+' new, '+r.updated+' updated, '+r.deleted+' deleted'); else showToast('Synced '+new Date().toLocaleTimeString()); }
+  }
 
   /* ---------- auth bootstrap / account flows ---------- */
   function updateStatusUI(){
@@ -3013,7 +3083,9 @@
   }
   async function openAccount(){
     clearAuthError(); $('acctError').classList.remove('show');
-    const dot=$('acctDot'), st=$('acctStatus'), det=$('acctDetail');
+    const dot=$('acctDot'), st=$('acctStatus'), det=$('acctDetail'), ls=$('acctLastSynced');
+    ls.textContent = 'Last synced: ' + (lastSyncedAt ? (new Date(lastSyncedAt).toLocaleString()) : 'never');
+    if(isSignedIn()){ $('acctSyncRow').style.display='flex'; } else { $('acctSyncRow').style.display='none'; }
     if(isSignedIn()){
       dot.className='sync-dot '+(syncState.dirty?'pending':(isOnline()?'cloud':'offline'));
       st.textContent = syncState.dirty? 'Waiting to sync…' : (isOnline()?'Cloud sync active':'Saved locally · offline');
@@ -3060,6 +3132,11 @@
     $('acctBackdrop').addEventListener('click', e=>{ if(e.target===$('acctBackdrop')) closeAccount(); });
     $('acctSignOutBtn').addEventListener('click', signOutAction);
     $('acctOpenLoginBtn').addEventListener('click', ()=>{ closeAccount(); openAuth('in'); });
+    $('acctSyncBtn').addEventListener('click', async ()=>{
+      const b=$('acctSyncBtn'); const old=b.textContent; b.disabled=true; b.textContent='Syncing…'; updateStatusUI();
+      await forceManualSync();
+      openAccount(); b.disabled=false; b.textContent=old;
+    });
     window.addEventListener('online', offlineNow);
     window.addEventListener('offline', offlineNow);
     window.addEventListener('beforeunload', ()=>{ if(isSignedIn() && isOnline() && syncState.dirty){ syncNow(false); } });
@@ -3067,15 +3144,17 @@
 
   async function bootAuth(){
     sbLoadSession();
+    lastSyncedAt = parseInt(localStorage.getItem('fc_lastSynced')||'0',10);
     updateStatusUI();
     if(!isSignedIn()) return;
     // validate/refresh quietly
     try{
       const user = await sbFetch('/auth/v1/user');
       if(user && sbSession) sbSession.user = user;
+      if(sbSession) scheduleTokenRefresh();
     }catch(e){
       if(sbSession && sbSession.refresh_token){
-        try{ await authRefresh(sbSession.refresh_token); }catch(e2){ await sbSaveSession(null); }
+        try{ await authRefresh(sbSession.refresh_token); scheduleTokenRefresh(); }catch(e2){ await sbSaveSession(null); }
       } else { await sbSaveSession(null); }
     }
     updateStatusUI();
