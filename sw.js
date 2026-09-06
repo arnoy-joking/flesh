@@ -1,74 +1,96 @@
-/* Flësh Service Worker — offline-first caching.
-   Pre-caches the app shell + all local (self-hosted) assets so the app
-   launches and works fully offline. Supabase network calls are never cached
-   as offline responses; they simply fail fast and sync resumes when online. */
+/* Flësh Service Worker — offline support done the *safe* way.
 
-const CACHE = 'flesh-v1';
-const PRECACHE = [
-  './',
-  './index.html',
+   Key rule: the APP SHELL (index.html / navigation) is NETWORK-FIRST.
+   That means whenever the device is online it always fetches the newest
+   code from the server, so bug fixes and updates actually reach users.
+   Only the immutable static assets (fonts, KaTeX, Chart.js) are cache-first,
+   because those never change and are what let the app render offline.
+
+   Supabase API calls are never intercepted here — they go straight to the
+   network so auth/sync always behave normally. */
+
+const CACHE = 'flesh-v3';        // bump this whenever caching behavior changes
+const IMMUTABLE_CACHE = 'flesh-assets-v3';
+
+const PRECACHE_SHELL = ['./index.html'];
+// Assets are cached lazily on first fetch; this just warms the most important.
+const PRECACHE_WARM = [
   './manifest.webmanifest',
   './icons/icon-192.png',
-  './icons/icon-512.png',
-  './lib/chart/chart.umd.min.js',
-  './lib/katex/katex.min.js',
-  './lib/katex/katex.min.css',
-  './lib/katex/auto-render.min.js',
-  './lib/katex/mhchem.min.js',
-  './lib/fonts/inter.css',
-  './lib/fonts/fraunces.css',
-  './lib/fonts/jetbrains.css'
+  './icons/icon-512.png'
 ];
-
-/* Self-hosted fonts + KaTeX fonts are in lib/fonts & lib/katex/fonts.
-   We cache them lazily (cache-first) on first fetch, and precache here by
-   matching any /lib/ request. */
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => {
-      // Individual font files will be fetched on first render; cache them too.
-      return c.addAll(PRECACHE).catch(() => {});
-    }).then(() => self.skipWaiting())
+    caches.open(IMMUTABLE_CACHE).then((c) =>
+      c.addAll([...PRECACHE_SHELL, ...PRECACHE_WARM]).catch(() => {})
+    ).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((k) => k !== IMMUTABLE_CACHE && k !== 'flesh-assets-v2' && k !== CACHE)
+          .map((k) => caches.delete(k))
+      )
     ).then(() => self.clients.claim())
   );
 });
+
+function isAsset(url) {
+  return /\.(woff2?|ttf|js|css|png|webp|svg)$/i.test(url.pathname);
+}
+function isShell(url) {
+  // navigation to the root or index.html = the app shell
+  return url.pathname === '/' || /\/index\.html$/i.test(url.pathname) ||
+         /\.html$/i.test(url.pathname);
+}
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  // Never touch Supabase REST/auth from the SW cache path.
+  // Never interfere with Supabase / any cross-origin API.
   if (url.origin.includes('supabase.co')) return;
 
-  // App shell + local assets: cache-first, fall back to network then cache.
   if (url.origin === self.location.origin) {
-    e.respondWith(
-      caches.match(req).then((hit) => {
-        if (hit) return hit;
-        return fetch(req).then((res) => {
-          if (res && res.ok && (url.pathname.endsWith('.woff2') || url.pathname.endsWith('.woff')
-              || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')
-              || url.pathname.endsWith('.png') || url.pathname.endsWith('.json')
-              || url.pathname.endsWith('.html'))) {
+    if (isShell(url)) {
+      // NETWORK-FIRST for the shell: always get the latest app code online.
+      e.respondWith(
+        fetch(req).then((res) => {
+          if (res && res.ok) {
             const clone = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, clone)).catch(() => {});
+            caches.open(IMMUTABLE_CACHE).then((c) => c.put(req, clone)).catch(() => {});
           }
           return res;
-        }).catch(() => caches.match('./index.html'));
-      })
-    );
+        }).catch(() =>
+          // Offline: fall back to the cached shell so the app still opens.
+          caches.match(req).then((m) => m || caches.match('./index.html'))
+        )
+      );
+      return;
+    }
+    if (isAsset(url)) {
+      // CACHE-FIRST for immutable assets (fonts, libs, icons).
+      e.respondWith(
+        caches.match(req).then((hit) => {
+          if (hit) return hit;
+          return fetch(req).then((res) => {
+            if (res && res.ok) {
+              const clone = res.clone();
+              caches.open(IMMUTABLE_CACHE).then((c) => c.put(req, clone)).catch(() => {});
+            }
+            return res;
+          });
+        })
+      );
+      return;
+    }
+    // Anything else same-origin: network normally.
     return;
   }
-
-  // Same-origin handled above. For any other same-origin subresources fall
-  // through to network-only by returning normally.
 });
