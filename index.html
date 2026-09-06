@@ -1778,7 +1778,7 @@
   function openRename(id){
     const d = library.find(o=>o.id===id); if(!d) return;
     promptCb = (val)=>{ val=(val||'').trim(); if(!val || val===d.title) return;
-      d.title = val; saveLibraryIndex(); renderLibrary(); renderTopbar(); showToast('Deck renamed'); };
+      d.title = val; d.updatedAt = Date.now(); saveLibraryIndex(); renderLibrary(); renderTopbar(); showToast('Deck renamed'); };
     openPrompt('Rename deck', d.title, 'New name');
   }
   function duplicateDeck(id){
@@ -1790,7 +1790,7 @@
       const copy = { id:newId, title:(deck.title||'Deck')+' (copy)', folder: deck.folder||'', cards: deck.cards.map(c=>({ type: c.type || 'basic', ...c })) };
       await sSet('deck:'+newId, JSON.stringify(copy));
       await sSet('progress:'+newId, JSON.stringify({ grades:{} }));
-      library.push({ id:newId, title:copy.title, folder:copy.folder, count:copy.cards.length, createdAt: Date.now(), masteryPct: 0, lastStudied: null });
+      library.push({ id:newId, title:copy.title, folder:copy.folder, count:copy.cards.length, createdAt: Date.now(), updatedAt: Date.now(), masteryPct: 0, lastStudied: null });
       await saveLibraryIndex();
       renderLibrary(); renderTopbar();
       showToast('Duplicated — starts fresh progress');
@@ -1842,9 +1842,9 @@
     };
     const st = deckStats(deckObj.cards);
     await sSet('deck:'+id, JSON.stringify(deckObj));
-    await sSet('progress:'+id, JSON.stringify({ grades:{} }));
+    await sSet('progress:'+id, JSON.stringify({ grades:{}, updatedAt: now }));
     library.push({ id, title: deckObj.title, folder: deckObj.folder, count: deckObj.cards.length,
-      createdAt: now, lastStudied: null, masteryPct: 0, mcq: st.mcq, basic: st.basic, newCount: deckObj.cards.length });
+      createdAt: now, updatedAt: now, lastStudied: null, masteryPct: 0, mcq: st.mcq, basic: st.basic, newCount: deckObj.cards.length });
     await saveLibraryIndex();
     return id;
   }
@@ -1870,14 +1870,16 @@
   }
 
   async function persistProgressAndMastery(){
-    await sSet('progress:'+activeDeck.id, JSON.stringify({ grades: progressMap }));
+    const _now = Date.now();
+    await sSet('progress:'+activeDeck.id, JSON.stringify({ grades: progressMap, updatedAt: _now }));
     const total = activeDeck.cards.length;
     const goodCount = Object.values(progressMap).filter(g=>g==='good').length;
     const pct = total ? Math.round((goodCount/total)*100) : 0;
     const entry = library.find(d => d.id === activeDeck.id);
     if(entry){
       entry.masteryPct = pct;
-      entry.lastStudied = Date.now();
+      entry.lastStudied = _now;
+      entry.updatedAt = _now;
       await saveLibraryIndex();
     }
   }
@@ -1912,6 +1914,7 @@
     await sDelete('resume:'+id);
     library = library.filter(d => d.id !== id);
     await saveLibraryIndex();
+    await addTombstone(id);       // let other devices know this deck was deleted
     renderLibrary(); renderTopbar();
     showToast('Deck deleted');
   }
@@ -2485,7 +2488,7 @@
       await sSet('progress:'+id, JSON.stringify((d&&d.progress)||{grades:{}}));
       const st = deckStats(deckObj.cards);
       library.push({ id, title:deckObj.title||'Untitled Deck', folder:(deckObj.folder||'').trim(), count:deckObj.cards.length,
-        createdAt:(d&&d.createdAt)||Date.now(), lastStudied:(d&&d.lastStudied)||null, masteryPct:Math.round((d&&d.masteryPct)||0),
+        createdAt:(d&&d.createdAt)||Date.now(), updatedAt: Date.now(), lastStudied:(d&&d.lastStudied)||null, masteryPct:Math.round((d&&d.masteryPct)||0),
         mcq:st.mcq, basic:st.basic, newCount:deckObj.cards.length });
       added++;
     }
@@ -2748,85 +2751,188 @@
     await sbSaveSession(null); updateStatusUI();
   }
 
-  /* ---------- state serialization ---------- */
-  async function serializeCloudState(){
-    const lib = library.slice();
-    const decks = {}, progress = {}, resume = {};
-    for(const d of lib){
-      const dr = await sGet('deck:'+d.id); if(dr){ try{ decks[d.id]=JSON.parse(dr); }catch(e){} }
-      const pr = await sGet('progress:'+d.id); if(pr){ try{ progress[d.id]=JSON.parse(pr); }catch(e){} }
-      const rr = await sGet('resume:'+d.id); if(rr){ try{ resume[d.id]=JSON.parse(rr); }catch(e){} }
-    }
-    const settings = { theme: theme, libView: libView };
-    return { v:1, library: lib, decks, progress, resume, settings, savedAt: Date.now() };
-  }
-  async function sbPush(){
-    if(!isSignedIn() || !isOnline() || syncState.pushing) { syncState.dirty=true; updateStatusUI(); return false; }
-    await ensureUser();
-    syncState.pushing = true; syncState.dirty=false;
-    try{
-      const payload = await serializeCloudState();
-      const body = { owner: sbSession.user.id, payload, updated_at: new Date().toISOString() };
-      await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE, {
-        method:'POST',
-        headers: Object.assign(sbAuthHeaders(), { 'Prefer':'resolution=merge-duplicates,return=minimal' }),
-        body: JSON.stringify(body)
-      });
-      syncState.error=null;
-    }catch(e){ syncState.dirty=true; syncState.error=e.message; }
-    finally{ syncState.pushing=false; updateStatusUI(); }
-    return !syncState.dirty;
-  }
-  function syncMarkDirty(){
-    if(!isSignedIn()) return;
-    syncState.dirty = true; updateStatusUI();
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(()=>{ if(isOnline()) sbPush(); else updateStatusUI(); }, 900);
-  }
-  function offlineNow(){ syncState.online = navigator.onLine; updateStatusUI();
-    if(isOnline() && isSignedIn() && syncState.dirty) sbPush(); }
+  /* ============================================================
+     MULTI-DEVICE MERGE ENGINE
+     Every device keeps a full local copy. When any two states meet
+     (local vs. cloud) they are MERGED, newest-wins at the granularity
+     of each deck and each deck's progress, and deletions are
+     propagated. Nothing is ever blindly overwritten.
+  ============================================================ */
+  const CLK = () => Date.now();
+  function nowIso(){ return new Date().toISOString(); }
 
+  // ---- per-deck change clocks (local read helpers) ----
+  function entryMod(e){ return (e && (e.updatedAt||e.createdAt||e.lastStudied||0))||0; }
+  async function readProgressObj(id){ const r=await sGet('progress:'+id); if(!r) return null; try{return JSON.parse(r);}catch(err){return null;} }
+  async function readDeckObj(id){ const r=await sGet('deck:'+id); if(!r) return null; try{return JSON.parse(r);}catch(err){return null;} }
+  function progressMod(entry, prog){ return (prog && prog.updatedAt)|| entryMod(entry); }
+
+  // ---- tombstones (deletions to broadcast to other devices) ----
+  async function readTombstones(){ const r=await sGet('deleted'); if(!r) return {}; try{return JSON.parse(r);}catch(e){return {};} }
+  async function addTombstone(id){
+    const t=await readTombstones(); t[id]=CLK();
+    await sSet('deleted', JSON.stringify(t));   // also triggers dirty
+  }
+  async function pruneTombstones(keepIds){ /* remove tombstones for decks that still exist on this device */ }
+
+  // ---- build a canonical payload describing THIS device ----
+  async function serializeLocalState(){
+    const lib = library.slice();
+    const decks={}, progress={}, resume={}, tombstones=await readTombstones();
+    for(const d of lib){
+      const dr=await readDeckObj(d.id); if(dr) decks[d.id]=dr;
+      const pr=await readProgressObj(d.id); if(pr) progress[d.id]=pr;
+      const rr=await sGet('resume:'+d.id); if(rr){ try{resume[d.id]=JSON.parse(rr);}catch(e){} }
+    }
+    // Drop tombstones whose deck still exists locally (deck recreated after delete)
+    for(const id in tombstones){ if(lib.some(e=>e.id===id)) delete tombstones[id]; }
+    const settings={ theme: theme, libView: libView };
+    return { v:2, library: lib, decks, progress, resume, tombstones, settings, savedAt: CLK() };
+  }
+
+  // ---- merge a remote payload INTO local state, newest-wins ----
+  // Returns {changed, added, updated, deleted, newLibrary, newTombstones}
+  async function mergeRemoteIntoLocal(remote){
+    if(!remote || !remote.v) return { changed:false, added:0, updated:0, deleted:0 };
+    const rLib = remote.library||[], rDecks=remote.decks||{}, rProg=remote.progress||{},
+          rResume=remote.resume||{}, rTomb=remote.tombstones||{};
+    const lTomb = await readTombstones();
+    // Build id -> local entry
+    const lById={}; library.forEach(e=>lById[e.id]=e);
+    const rById={}; rLib.forEach(e=>rById[e.id]=e);
+    const allIds=new Set([...Object.keys(lById), ...Object.keys(rById)]);
+
+    let changed=false, added=0, updated=0, deleted=0;
+    const finalLib=[], finalTomb={}, touched=new Set();
+
+    // combined tombstone authority per id: max of local & remote tombstone time
+    const tombOf = (id)=> Math.max(lTomb[id]||0, rTomb[id]||0);
+
+    for(const id of allIds){
+      const L=lById[id], R=rById[id];
+      const t=tombOf(id);
+      const lMod= L?entryMod(L):0, rMod= R?entryMod(R):0;
+      const deckAlive = !L && !R ? false : true;
+      // A deck is deleted if its tombstone time is newer than the newest
+      // modification of that deck on EITHER side, AND that side actually
+      // still references it (so an old delete doesn't nuke a fresh edit).
+      let remove=false;
+      if(L && t>0 && t>lMod && !(R && t<=rMod)) remove=true;
+      if(!L && R && t>0 && t>rMod) remove=true;
+      if(L && !R && t>0 && t>lMod) remove=true;    // deletion happened elsewhere, mirror it
+
+      if(remove){ changed=true; deleted++; continue; }
+
+      // Decks present on BOTH sides: pick newest content/meta winner.
+      let entry = L || R;
+      if(L && R){
+        const newer = lMod>=rMod ? L : R;
+        entry = Object.assign({}, newer);
+        if(newer===R) updated++;               // local should adopt remote meta/content
+        else if(lMod>rMod) updated=updated;    // local is newer, will push
+        // If neither strictly, no op.
+      } else if(R && !L){ added++; changed=true; }
+      else { /* only local; keep */ }
+
+      finalLib.push(entry);
+
+      // progress: newest wins per deck
+      const rProgO = rProg[id];
+      const lProg = L ? await readProgressObj(id) : null;
+      const chooseRemoteProg = L && R ? (progressMod(R, rProgO) > progressMod(L, lProg)) : (!L && R);
+      if(chooseRemoteProg && rProgO){ await sSet('progress:'+id, JSON.stringify(rProgO)); changed=true; }
+
+      // deck content object newest wins (cards change rarely; on add we need it)
+      const lDeck = L ? await readDeckObj(id) : null;
+      const rDeckO = rDecks[id];
+      const contentIsRemote = L && R ? (rMod>lMod && rDeckO) : (!L && R && rDeckO);
+      if(contentIsRemote && rDeckO){ await sSet('deck:'+id, JSON.stringify(rDeckO)); changed=true; }
+      else if(!L && R && !rDeckO && !lDeck){
+        // entry exists remotely but no deck object yet on this side — skip gracefully
+      }
+
+      touched.add(id);
+    }
+
+    // Remove local tombstones for decks that survive (so we don't re-delete)
+    const keepSet = new Set(finalLib.map(e=>e.id));
+    for(const id in lTomb){ if(keepSet.has(id)) delete finalTomb[id]; else finalTomb[id]=lTomb[id]; }
+    // incorporate remote tombstones not matched (deletions from other device for ids we no longer track)
+    for(const id in rTomb){ if(!keepSet.has(id)) finalTomb[id]=Math.max(finalTomb[id]||0, rTomb[id]); }
+
+    // Resume: newest per deck; drop resumes whose deck was deleted
+    let resumeChanged=false;
+    for(const id in rResume){ if(keepSet.has(id)){ const lr=await sGet('resume:'+id); let lrO=null; try{lrO=lr?JSON.parse(lr):null;}catch(e){} if(!lrO || ((rResume[id].savedAt||0) > (lrO.savedAt||0))){ await sSet('resume:'+id, JSON.stringify(rResume[id])); resumeChanged=true; } } }
+    if(resumeChanged) changed=true;
+
+    // Settings (theme / layout) are treated as device preferences: adopt the
+    // cloud copy only when this device has never picked one (e.g. brand-new
+    // device signing in), so one person's dark mode doesn't force it on another.
+    const localHasTheme = !!(await sGet('settings:theme'));
+    if(!localHasTheme && remote.settings){
+      if(remote.settings.theme){ theme=remote.settings.theme; await sSet('settings:theme', theme); document.documentElement.setAttribute('data-theme',theme); changed=true; }
+      if(remote.settings.libView){ libView=remote.settings.libView; await sSet('settings:libView', libView); changed=true; }
+    }
+
+    // Write merged library + tombstones
+    const before = library.length;
+    library = finalLib;
+    await sSet('deckIndex', JSON.stringify(library));
+    await sSet('deleted', JSON.stringify(finalTomb));
+    if(library.length!==before) changed=true;
+
+    // Clean any orphaned local keys not in final set
+    return { changed, added, updated, deleted };
+  }
+  // ---- upload merged local state (idempotent upsert) ----
+  async function sbUpload(payload){
+    const body = { owner: sbSession.user.id, payload, updated_at: nowIso() };
+    await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE, {
+      method:'POST',
+      headers: Object.assign(sbAuthHeaders(), { 'Prefer':'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify(body)
+    });
+  }
   async function sbPull(){
     if(!isSignedIn()) return null;
-    const res = await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE + '?select=owner,payload,updated_at&owner=eq.'+encodeURIComponent(sbSession.user.id)+'&limit=1', {
-      headers: sbAuthHeaders()
-    });
+    const res = await fetch(SUPABASE_URL + '/rest/v1/' + CLOUD_TABLE + '?select=owner,payload,updated_at&owner=eq.'+encodeURIComponent(sbSession.user.id)+'&limit=1', { headers: sbAuthHeaders() });
     if(!res.ok) throw new Error('Sync read failed ('+res.status+')');
     const arr = await res.json();
     if(arr && arr.length && arr[0].payload) return arr[0].payload;
     return null;
   }
-  async function cloudApply(payload){
-    if(!payload || !payload.v) return 0;
-    let added=0;
-    const lib = payload.library||[];
-    localStorage.setItem('fc_deckIndex', JSON.stringify(lib));
-    for(const d of lib){
-      if(payload.decks && payload.decks[d.id]) localStorage.setItem('fc_deck:'+d.id, JSON.stringify(payload.decks[d.id]));
-      if(payload.progress && payload.progress[d.id]) localStorage.setItem('fc_progress:'+d.id, JSON.stringify(payload.progress[d.id]));
-      added++;
-    }
-    if(payload.resume){ for(const id in payload.resume) localStorage.setItem('fc_resume:'+id, JSON.stringify(payload.resume[id])); }
-    if(payload.settings){
-      if(payload.settings.theme){ localStorage.setItem('fc_settings:theme', payload.settings.theme); }
-      if(payload.settings.libView){ localStorage.setItem('fc_settings:libView', payload.settings.libView); }
-    }
-    library = lib.slice();
-    theme = (payload.settings && payload.settings.theme) || 'dark';
-    libView = (payload.settings && payload.settings.libView) || libView;
-    document.documentElement.setAttribute('data-theme', theme);
-    await loadLibrary();
-    return added;
-  }
+
+  // ---- public sync: pull -> merge -> push merged ----
   async function syncNow(force){
     if(!isSignedIn()) return;
     await ensureUser();
+    syncState.pushing=true; updateStatusUI();
     try{
       const remote = await sbPull();
-      if(remote){ await cloudApply(remote); }        // cloud = source of truth
-      if(force || !remote || !library.length){ await sbPush(); }
-    }catch(e){ syncState.error=e.message; syncState.dirty=true; updateStatusUI(); }
+      let result = { changed:false, added:0, updated:0, deleted:0 };
+      if(remote && remote.v){ result = await mergeRemoteIntoLocal(remote); }
+      // Always push back the merged local state: it already reflects everything
+      // from the cloud plus any newer local edits, so uploads are idempotent and
+      // a device that went offline never loses its local changes.
+      const payload = await serializeLocalState();
+      await sbUpload(payload);
+      syncState.error=null; syncState.dirty=false;
+      if(result.changed){ renderTopbar(); renderLibrary(); renderMath($('libraryWrap')); }
+      if(result.added||result.deleted||result.updated) syncLastSummary = result;
+    }catch(e){ syncState.dirty=true; syncState.error=e.message; }
+    finally{ syncState.pushing=false; updateStatusUI(); }
   }
+  let syncLastSummary=null;
+  function syncMarkDirty(){
+    if(!isSignedIn()) return;
+    syncState.dirty = true; updateStatusUI();
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(()=>{ if(isOnline()) syncNow(false); else updateStatusUI(); }, 900);
+  }
+  function offlineNow(){ syncState.online = navigator.onLine; updateStatusUI();
+    if(isOnline() && isSignedIn() && syncState.dirty) syncNow(false); }
+
+  async function forceManualSync(){ await syncNow(true); if(syncState.error) showToast('Sync problem: '+syncState.error); else { const r=syncLastSummary; if(r&&(r.added||r.deleted||r.updated)) showToast('Merged from cloud — '+r.added+' new, '+r.updated+' updated, '+r.deleted+' deleted'); else showToast('Synced'); } }
 
   /* ---------- auth bootstrap / account flows ---------- */
   function updateStatusUI(){
@@ -2908,7 +3014,7 @@
     if(isSignedIn()){
       dot.className='sync-dot '+(syncState.dirty?'pending':(isOnline()?'cloud':'offline'));
       st.textContent = syncState.dirty? 'Waiting to sync…' : (isOnline()?'Cloud sync active':'Saved locally · offline');
-      det.innerHTML = 'Signed in as <span class="acct-email">'+escapeHtml(sbSession.user.email||'')+'</span><br><br>Your decks and progress are backed up to your cloud account. Any change syncs automatically when you’re online — and you can keep studying offline.';
+      det.innerHTML = 'Signed in as <span class="acct-email">'+escapeHtml(sbSession.user.email||'')+'</span><br><br>Your decks &amp; progress are synced across every device that signs in with this account. Changes merge automatically (newest edit wins per deck) when you’re online — and you can keep studying offline.';
       $('acctSignOutBtn').hidden=false; $('acctOpenLoginBtn').hidden=false;
     } else {
       dot.className='sync-dot '+(isOnline()?'':'offline');
@@ -2953,7 +3059,7 @@
     $('acctOpenLoginBtn').addEventListener('click', ()=>{ closeAccount(); openAuth('in'); });
     window.addEventListener('online', offlineNow);
     window.addEventListener('offline', offlineNow);
-    window.addEventListener('beforeunload', ()=>{ if(isSignedIn() && isOnline() && syncState.dirty){ sbPush(); } });
+    window.addEventListener('beforeunload', ()=>{ if(isSignedIn() && isOnline() && syncState.dirty){ syncNow(false); } });
   }
 
   async function bootAuth(){

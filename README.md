@@ -59,9 +59,16 @@ Local test: `python3 -m http.server` in the folder (fine for testing; install pr
 ## How it behaves
 
 - **Signed out / offline:** works exactly as before — all data in this browser's localStorage.
-- **Sign in** (bottom-right pill → Sign in): the **cloud copy is treated as the source of truth** and is downloaded
-  to this device. Every change is then auto-synced (debounced) whenever you're online; if offline, changes are saved
-  locally and pushed automatically on reconnect.
+- **Multi-device sync (merge, newest-wins):** each device keeps a full local copy. When a device comes online it
+  **merges** its local state with the cloud copy — nothing is blindly overwritten:
+  - **Decks** you created on Device A appear on Device B (and vice-versa).
+  - **Study progress & mastery** merge per deck — the *newest* edit wins for each deck, so offline studying on one
+    device is never lost when another device has synced.
+  - **Deleting a deck** on any device is propagated to the others (no "zombie" resurrection).
+  - **Theme/layout** stay per-device (only adopted on a brand-new device that hasn't chosen one).
+  - Every change auto-syncs (debounced) whenever you're online; if offline, changes are saved locally and merged+uploaded
+    automatically on reconnect.
+- **Sign in** (bottom-right pill → Sign in): the cloud copy is pulled and merged, then your merged state is pushed back.
 - The **pill dot**: green = synced, amber = syncing/pending, gray = offline/not signed in.
 
 ## Files
