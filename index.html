@@ -1074,10 +1074,10 @@
     try{ const v = localStorage.getItem('fc_'+key); return v; }
     catch(e){ return null; }
   }
-  async function sSet(key, value){
+  async function sSet(key, value, silent){
     try{
       localStorage.setItem('fc_'+key, value);
-      if(typeof syncMarkDirty==='function') syncMarkDirty();
+      if(!silent && typeof syncMarkDirty==='function') syncMarkDirty();
       return true;
     }
     catch(e){ showToast('Storage full — could not save.'); return false; }
@@ -2695,8 +2695,6 @@
   let syncTimer = null;
   let lastSyncedAt = 0, lastUploadHash = '';
   let refreshTimer = null, refreshing = null;
-  let syncMuted = false;   // true while a sync writes back internal state; prevents self-triggering loops
-  let syncChangedDuringSync = false; // a real user change arrived while a sync was running
 
   function isSignedIn(){ return !!sbSession && !!sbSession.access_token; }
   async function ensureUser(){
@@ -2853,13 +2851,13 @@
       const rProgO = rProg[id];
       const lProg = L ? await readProgressObj(id) : null;
       const chooseRemoteProg = L && R ? (progressMod(R, rProgO) > progressMod(L, lProg)) : (!L && R);
-      if(chooseRemoteProg && rProgO){ await sSet('progress:'+id, JSON.stringify(rProgO)); changed=true; }
+      if(chooseRemoteProg && rProgO){ await sSet('progress:'+id, JSON.stringify(rProgO), true); changed=true; }
 
       // deck content object newest wins (cards change rarely; on add we need it)
       const lDeck = L ? await readDeckObj(id) : null;
       const rDeckO = rDecks[id];
       const contentIsRemote = L && R ? (rMod>lMod && rDeckO) : (!L && R && rDeckO);
-      if(contentIsRemote && rDeckO){ await sSet('deck:'+id, JSON.stringify(rDeckO)); changed=true; }
+      if(contentIsRemote && rDeckO){ await sSet('deck:'+id, JSON.stringify(rDeckO), true); changed=true; }
       else if(!L && R && !rDeckO && !lDeck){
         // entry exists remotely but no deck object yet on this side — skip gracefully
       }
@@ -2875,7 +2873,7 @@
 
     // Resume: newest per deck; drop resumes whose deck was deleted
     let resumeChanged=false;
-    for(const id in rResume){ if(keepSet.has(id)){ const lr=await sGet('resume:'+id); let lrO=null; try{lrO=lr?JSON.parse(lr):null;}catch(e){} if(!lrO || ((rResume[id].savedAt||0) > (lrO.savedAt||0))){ await sSet('resume:'+id, JSON.stringify(rResume[id])); resumeChanged=true; } } }
+    for(const id in rResume){ if(keepSet.has(id)){ const lr=await sGet('resume:'+id); let lrO=null; try{lrO=lr?JSON.parse(lr):null;}catch(e){} if(!lrO || ((rResume[id].savedAt||0) > (lrO.savedAt||0))){ await sSet('resume:'+id, JSON.stringify(rResume[id]), true); resumeChanged=true; } } }
     if(resumeChanged) changed=true;
 
     // Settings (theme / layout) are treated as device preferences: adopt the
@@ -2883,15 +2881,15 @@
     // device signing in), so one person's dark mode doesn't force it on another.
     const localHasTheme = !!(await sGet('settings:theme'));
     if(!localHasTheme && remote.settings){
-      if(remote.settings.theme){ theme=remote.settings.theme; await sSet('settings:theme', theme); document.documentElement.setAttribute('data-theme',theme); changed=true; }
-      if(remote.settings.libView){ libView=remote.settings.libView; await sSet('settings:libView', libView); changed=true; }
+      if(remote.settings.theme){ theme=remote.settings.theme; await sSet('settings:theme', theme, true); document.documentElement.setAttribute('data-theme',theme); changed=true; }
+      if(remote.settings.libView){ libView=remote.settings.libView; await sSet('settings:libView', libView, true); changed=true; }
     }
 
     // Write merged library + tombstones
     const before = library.length;
     library = finalLib;
-    await sSet('deckIndex', JSON.stringify(library));
-    await sSet('deleted', JSON.stringify(finalTomb));
+    await sSet('deckIndex', JSON.stringify(library), true);
+    await sSet('deleted', JSON.stringify(finalTomb), true);
     if(library.length!==before) changed=true;
 
     // Clean any orphaned local keys not in final set
@@ -2964,7 +2962,7 @@
   async function syncNow(force){
     if(!isSignedIn()) return;
     await ensureUser();
-    syncState.pushing=true; syncMuted=true; updateStatusUI();
+    syncState.pushing=true; updateStatusUI();
     try{
       const remote = await sbPull();
       let result = { changed:false, added:0, updated:0, deleted:0 };
@@ -2989,14 +2987,12 @@
       }
     }
     finally{
-      syncState.pushing=false; syncMuted=false; updateStatusUI();
-      if(syncChangedDuringSync){ syncChangedDuringSync=false; syncState.dirty=true; clearTimeout(syncTimer); syncTimer=setTimeout(()=>{ if(isOnline()) syncNow(false); else updateStatusUI(); }, 700); }
+      syncState.pushing=false; updateStatusUI();
     }
   }
   let syncLastSummary=null;
   function syncMarkDirty(){
     if(!isSignedIn()) return;
-    if(syncMuted){ syncChangedDuringSync = true; syncState.dirty=true; return; } // flag for follow-up; don't reschedule mid-sync
     syncState.dirty = true; updateStatusUI();
     clearTimeout(syncTimer);
     syncTimer = setTimeout(()=>{ if(isOnline()) syncNow(false); else updateStatusUI(); }, 900);
@@ -3193,5 +3189,5 @@
 
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a36ff3586c55aab8',t:'MTc4ODcyMzY4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
