@@ -2063,7 +2063,14 @@
   function renderSessionCard(animateDir){
     const cardInner = $('cardInner'), faceFront = $('faceFront'), faceBack = $('faceBack');
     const flipBtn = $('flipBtn'), prevBtn = $('prevBtn'), nextBtn = $('nextBtn'), gradeRow = $('gradeRow'), kbdHint = $('kbdHint');
+    // When moving to a NEW card, snap the 3D flip back to the front with NO
+    // transition. Otherwise the un-flip animation (from the previous graded
+    // card's flipped state) briefly shows the NEW card's back/answer face,
+    // spoiling the question.
+    cardInner.style.transition = 'none';
     cardInner.classList.remove('flipped');
+    void cardInner.offsetWidth;                 // force reflow so the snap applies
+    cardInner.style.transition = '';            // re-enable CSS transition for manual flips
     gradeRow.classList.remove('show');
     currentVisual = null;
 
