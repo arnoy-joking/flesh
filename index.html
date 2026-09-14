@@ -313,6 +313,16 @@
   .card-visual canvas{ width:100%; height:100%; display:block; }
   .card-svg{ margin-top:10px; border-radius:9px; background:rgba(255,255,255,.25); border:1px solid var(--paper-shadow); overflow:hidden; display:flex; align-items:center; justify-content:center; padding:8px; }
   .card-svg svg{ max-width:100%; max-height:200px; width:auto; height:auto; display:block; }
+  /* visuals inside MCQ options (smaller, inline) */
+  .card-visual.opt-visual{ height:92px; margin-top:7px; }
+  .card-svg.opt-svg{ margin-top:7px; padding:6px; }
+  .card-svg.opt-svg svg{ max-height:84px; }
+  .opt-body{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+  .opt-body > .card-visual, .opt-body > .card-svg{ margin-top:7px; }
+  /* inline svg pasted straight into text */
+  .inline-svg-wrap{ display:block; margin:8px 0; text-align:center; }
+  .inline-svg-wrap svg{ max-width:100%; max-height:170px; width:auto; height:auto; display:inline-block; }
+  .sheet-option .opt-body{ display:flex; flex-direction:column; align-items:flex-start; }
   /* Chemistry compound display */
   .chem-compound{
     margin:8px 0; padding:10px 14px; border-radius:8px;
@@ -860,27 +870,33 @@
       <div class="modal-body">
         <span class="field-label">Folder (optional)</span>
         <input type="text" id="folderInput" placeholder="e.g. MCAT Prep, Semester 2…">
-        <p>Cards are <code class="schema">"type":"basic"</code> or <code class="schema">"type":"mcq"</code>. Wrap math in <code class="schema">$...$</code>, chemistry in <code class="schema">$\ce{...}$</code>. Add <code class="schema">"plot"</code>, <code class="schema">"chart"</code>, or <code class="schema">"svg"</code> for visuals.</p>
+        <p>Cards are <code class="schema">"type":"basic"</code> (needs <code class="schema">front</code> + <code class="schema">back</code>) or <code class="schema">"type":"mcq"</code> (needs <code class="schema">question</code> + <code class="schema">options</code> + numeric <code class="schema">answer</code>). Text supports <code class="schema">**bold**</code>, <code class="schema">*italic*</code>, <code class="schema">`code`</code>, <code class="schema">\n</code> line breaks, math in <code class="schema">$...$</code> / <code class="schema">$$...$$</code>, and chemistry in <code class="schema">$\ce{...}$</code>.</p>
+        <p style="margin-top:-4px;"><strong style="color:var(--amber);font-size:11px;letter-spacing:.04em;text-transform:uppercase;">Visuals go anywhere</strong> — paste raw <code class="schema">&lt;svg&gt;</code> into any text, or use per-field keys: <code class="schema">frontSvg</code> <code class="schema">backSvg</code> <code class="schema">questionSvg</code> <code class="schema">explSvg</code> · <code class="schema">frontChart</code> <code class="schema">backChart</code> <code class="schema">questionChart</code> <code class="schema">explChart</code> · <code class="schema">frontPlot</code> <code class="schema">backPlot</code> <code class="schema">questionPlot</code> <code class="schema">explPlot</code>. Per option: an object <code class="schema">{"text":…,"svg":…,"chart":…,"plot":…}</code> or parallel arrays <code class="schema">optionSvgs</code> / <code class="schema">optionCharts</code> / <code class="schema">optionPlots</code>. Legacy card-level <code class="schema">svg</code>/<code class="schema">chart</code>/<code class="schema">plot</code> still work.</p>
         <details style="margin-bottom:12px;">
           <summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--amber);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">Copy JSON template</summary>
           <div style="position:relative;">
-            <textarea id="templateBox" readonly style="width:100%;min-height:280px;background:var(--ink);border:1px solid var(--ink-line);border-radius:10px;color:var(--ink-bright);font-family:var(--font-mono);font-size:10.5px;padding:12px;resize:vertical;line-height:1.55;">{
+            <textarea id="templateBox" readonly style="width:100%;min-height:420px;background:var(--ink);border:1px solid var(--ink-line);border-radius:10px;color:var(--ink-bright);font-family:var(--font-mono);font-size:10.5px;padding:12px;resize:vertical;line-height:1.55;">{
   "title": "My Deck",
   "folder": "Folder Name",
   "cards": [
     {
       "type": "basic",
-      "tag": "Tag",
-      "front": "Question with $math$",
-      "back": "Answer with $\\frac{1}{2}$"
+      "tag": "Text",
+      "front": "**Bold**, *italic*, `code` — and a line break:\nsecond line here.",
+      "back": "Inline math $E = mc^2$, display math $$\\int_0^1 x^2 dx = \\frac{1}{3}$$, chemistry $\\ce{H2SO4}$"
     },
     {
       "type": "mcq",
-      "tag": "Tag",
-      "question": "Which is correct?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "answer": 0,
-      "explanation": "Why the answer is correct."
+      "tag": "Basics",
+      "question": "Which value of $x$ solves $3x - 7 = 8$?",
+      "options": [
+        "$x = 3$",
+        "$x = 5$",
+        "$x = -5$",
+        "$x = \\frac{15}{3}$"
+      ],
+      "answer": 1,
+      "explanation": "Add 7: $3x = 15$, then divide by 3: $x = 5$."
     },
     {
       "type": "basic",
@@ -890,30 +906,169 @@
     },
     {
       "type": "basic",
-      "tag": "Graph",
-      "front": "Graph of y = sin(x)?",
-      "back": "A wave from -1 to 1.",
-      "plot": { "expr": "sin(x)", "xMin": -6.283, "xMax": 6.283 }
+      "tag": "SVG · front",
+      "front": "Draw the Lewis structure of water.",
+      "back": "Two bonds, two lone pairs on O.",
+      "frontSvg": "&lt;svg viewBox='0 0 200 140' xmlns='http://www.w3.org/2000/svg'>&lt;line x1='60' y1='70' x2='100' y2='40' stroke='#B24C4C' stroke-width='2.5'/>&lt;line x1='140' y1='70' x2='100' y2='40' stroke='#B24C4C' stroke-width='2.5'/>&lt;circle cx='100' cy='40' r='16' fill='none' stroke='#B24C4C' stroke-width='2'/>&lt;text x='100' y='45' text-anchor='middle' fill='#B24C4C' font-size='16' font-weight='bold' font-family='serif'>O&lt;/text>&lt;circle cx='60' cy='70' r='14' fill='none' stroke='#3D7EA6' stroke-width='2'/>&lt;text x='60' y='75' text-anchor='middle' fill='#3D7EA6' font-size='16' font-weight='bold' font-family='serif'>H&lt;/text>&lt;circle cx='140' cy='70' r='14' fill='none' stroke='#3D7EA6' stroke-width='2'/>&lt;text x='140' y='75' text-anchor='middle' fill='#3D7EA6' font-size='16' font-weight='bold' font-family='serif'>H&lt;/text>&lt;/svg>"
+    },
+    {
+      "type": "basic",
+      "tag": "Chart · back",
+      "front": "How did sales trend across the year?",
+      "back": "Steady climb, strongest in Q4.",
+      "backChart": {
+        "kind": "bar",
+        "labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4"
+        ],
+        "series": [
+          {
+            "name": "Units",
+            "data": [
+              120,
+              180,
+              210,
+              305
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "basic",
+      "tag": "Plot · inline",
+      "front": "What does this function look like? &lt;svg viewBox='0 0 160 80' xmlns='http://www.w3.org/2000/svg'>&lt;path d='M5 40 Q 25 5 45 40 T 85 40 T 125 40 T 155 40' fill='none' stroke='#C98A2C' stroke-width='2.5'/>&lt;/svg>",
+      "back": "A sine wave, amplitude 1, period $2\\pi$.",
+      "backPlot": {
+        "expr": "sin(x)",
+        "xMin": -6.283,
+        "xMax": 6.283
+      }
+    },
+    {
+      "type": "basic",
+      "tag": "Legacy keys",
+      "front": "Shape of $y = x^2$?",
+      "back": "An upward parabola with vertex at the origin.",
+      "plot": {
+        "expr": "x^2",
+        "xMin": -5,
+        "xMax": 5
+      }
     },
     {
       "type": "mcq",
-      "tag": "Data",
-      "question": "When does pH spike?",
-      "chart": {
-        "kind": "line",
-        "labels": [0, 5, 10, 15, 20, 25, 30],
-        "series": [{ "name": "pH", "data": [2, 2.5, 3.2, 4.5, 8.9, 11, 11.5] }]
+      "tag": "Graph · question",
+      "question": "Which curve is $y = \\sin(x)$?",
+      "questionPlot": {
+        "expr": "sin(x)",
+        "xMin": -6.283,
+        "xMax": 6.283
       },
-      "options": ["5 mL", "15 mL", "20 mL", "30 mL"],
+      "options": [
+        "A straight line",
+        "A parabola",
+        "A wave",
+        "An exponential"
+      ],
+      "answer": 2,
+      "explanation": "$\\sin$ oscillates between $-1$ and $1$ with period $2\\pi$."
+    },
+    {
+      "type": "mcq",
+      "tag": "Chart · question",
+      "question": "At what volume does pH spike?",
+      "questionChart": {
+        "kind": "line",
+        "labels": [
+          0,
+          5,
+          10,
+          15,
+          20,
+          25,
+          30
+        ],
+        "series": [
+          {
+            "name": "pH",
+            "data": [
+              2,
+              2.5,
+              3.2,
+              4.5,
+              8.9,
+              11,
+              11.5
+            ]
+          }
+        ]
+      },
+      "options": [
+        "5 mL",
+        "15 mL",
+        "20 mL",
+        "30 mL"
+      ],
       "answer": 2,
       "explanation": "The steep jump marks the equivalence point."
     },
     {
-      "type": "basic",
-      "tag": "Structure",
-      "front": "Draw the Lewis structure of water.",
-      "back": "Two bonds, two lone pairs on O.",
-      "svg": "&lt;svg viewBox=\"0 0 200 140\" xmlns=\"http://www.w3.org/2000/svg\"&gt;&lt;line x1=\"60\" y1=\"70\" x2=\"100\" y2=\"40\" stroke=\"#2A2620\" stroke-width=\"2.5\"/&gt;&lt;line x1=\"140\" y1=\"70\" x2=\"100\" y2=\"40\" stroke=\"#2A2620\" stroke-width=\"2.5\"/&gt;&lt;circle cx=\"100\" cy=\"40\" r=\"16\" fill=\"none\" stroke=\"#B24C4C\" stroke-width=\"2\"/&gt;&lt;text x=\"100\" y=\"45\" text-anchor=\"middle\" fill=\"#B24C4C\" font-size=\"16\" font-weight=\"bold\" font-family=\"serif\"&gt;O&lt;/text&gt;&lt;circle cx=\"60\" cy=\"70\" r=\"14\" fill=\"none\" stroke=\"#3D7EA6\" stroke-width=\"2\"/&gt;&lt;text x=\"60\" y=\"75\" text-anchor=\"middle\" fill=\"#3D7EA6\" font-size=\"16\" font-weight=\"bold\" font-family=\"serif\"&gt;H&lt;/text&gt;&lt;circle cx=\"140\" cy=\"70\" r=\"14\" fill=\"none\" stroke=\"#3D7EA6\" stroke-width=\"2\"/&gt;&lt;text x=\"140\" y=\"75\" text-anchor=\"middle\" fill=\"#3D7EA6\" font-size=\"16\" font-weight=\"bold\" font-family=\"serif\"&gt;H&lt;/text&gt;&lt;/svg&gt;"
+      "type": "mcq",
+      "tag": "Option objects",
+      "question": "Which diagram shows a circle with radius $r$?",
+      "options": [
+        {
+          "text": "Circle with radius",
+          "svg": "&lt;svg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'>&lt;circle cx='60' cy='60' r='48' fill='none' stroke='#2F6F52' stroke-width='3'/>&lt;line x1='60' y1='60' x2='108' y2='60' stroke='#C98A2C' stroke-width='3'/>&lt;text x='84' y='52' fill='#C98A2C' font-size='13' font-family='serif'>r&lt;/text>&lt;/svg>"
+        },
+        {
+          "text": "Triangle",
+          "svg": "&lt;svg viewBox='0 0 120 100' xmlns='http://www.w3.org/2000/svg'>&lt;polygon points='60,10 110,90 10,90' fill='none' stroke='#5B5A9C' stroke-width='3'/>&lt;text x='60' y='82' text-anchor='middle' fill='#5B5A9C' font-size='12' font-family='serif'>base&lt;/text>&lt;/svg>"
+        },
+        {
+          "text": "Just a curve",
+          "plot": {
+            "expr": "sqrt(25-x^2)",
+            "xMin": -5,
+            "xMax": 5
+          }
+        }
+      ],
+      "answer": 0
+    },
+    {
+      "type": "mcq",
+      "tag": "Option arrays",
+      "question": "Pick the right shape.",
+      "options": [
+        "Circle",
+        "Triangle",
+        "Square"
+      ],
+      "optionSvgs": [
+        "&lt;svg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'>&lt;circle cx='60' cy='60' r='48' fill='none' stroke='#2F6F52' stroke-width='3'/>&lt;line x1='60' y1='60' x2='108' y2='60' stroke='#C98A2C' stroke-width='3'/>&lt;text x='84' y='52' fill='#C98A2C' font-size='13' font-family='serif'>r&lt;/text>&lt;/svg>",
+        "&lt;svg viewBox='0 0 120 100' xmlns='http://www.w3.org/2000/svg'>&lt;polygon points='60,10 110,90 10,90' fill='none' stroke='#5B5A9C' stroke-width='3'/>&lt;text x='60' y='82' text-anchor='middle' fill='#5B5A9C' font-size='12' font-family='serif'>base&lt;/text>&lt;/svg>",
+        null
+      ],
+      "answer": 1
+    },
+    {
+      "type": "mcq",
+      "tag": "SVG · explanation",
+      "question": "Where do the lone pairs sit in water?",
+      "questionSvg": "&lt;svg viewBox='0 0 200 140' xmlns='http://www.w3.org/2000/svg'>&lt;line x1='60' y1='70' x2='100' y2='40' stroke='#B24C4C' stroke-width='2.5'/>&lt;line x1='140' y1='70' x2='100' y2='40' stroke='#B24C4C' stroke-width='2.5'/>&lt;circle cx='100' cy='40' r='16' fill='none' stroke='#B24C4C' stroke-width='2'/>&lt;text x='100' y='45' text-anchor='middle' fill='#B24C4C' font-size='16' font-weight='bold' font-family='serif'>O&lt;/text>&lt;circle cx='60' cy='70' r='14' fill='none' stroke='#3D7EA6' stroke-width='2'/>&lt;text x='60' y='75' text-anchor='middle' fill='#3D7EA6' font-size='16' font-weight='bold' font-family='serif'>H&lt;/text>&lt;circle cx='140' cy='70' r='14' fill='none' stroke='#3D7EA6' stroke-width='2'/>&lt;text x='140' y='75' text-anchor='middle' fill='#3D7EA6' font-size='16' font-weight='bold' font-family='serif'>H&lt;/text>&lt;/svg>",
+      "options": [
+        "On H atoms",
+        "On the O atom",
+        "Between H and O"
+      ],
+      "answer": 1,
+      "explanation": "Both lone pairs sit on oxygen, giving a bent shape (~104.5°).",
+      "explSvg": "&lt;svg viewBox='0 0 200 140' xmlns='http://www.w3.org/2000/svg'>&lt;line x1='60' y1='70' x2='100' y2='40' stroke='#B24C4C' stroke-width='2.5'/>&lt;line x1='140' y1='70' x2='100' y2='40' stroke='#B24C4C' stroke-width='2.5'/>&lt;circle cx='100' cy='40' r='16' fill='none' stroke='#B24C4C' stroke-width='2'/>&lt;text x='100' y='45' text-anchor='middle' fill='#B24C4C' font-size='16' font-weight='bold' font-family='serif'>O&lt;/text>&lt;circle cx='60' cy='70' r='14' fill='none' stroke='#3D7EA6' stroke-width='2'/>&lt;text x='60' y='75' text-anchor='middle' fill='#3D7EA6' font-size='16' font-weight='bold' font-family='serif'>H&lt;/text>&lt;circle cx='140' cy='70' r='14' fill='none' stroke='#3D7EA6' stroke-width='2'/>&lt;text x='140' y='75' text-anchor='middle' fill='#3D7EA6' font-size='16' font-weight='bold' font-family='serif'>H&lt;/text>&lt;/svg>"
     }
   ]
 }</textarea>
@@ -1268,6 +1423,97 @@
   }
 
   /* ============================================================
+     VISUALS EVERYWHERE — SVG + graphs in ANY text field
+     Supported on: basic front, basic back, MCQ question, each MCQ
+     option, and the explanation.
+     Three authoring styles all work:
+       1) inline raw <svg>...</svg> pasted directly into any text field
+       2) per-field keys:  frontSvg / backSvg / questionSvg / explSvg
+                           frontChart / backChart / questionChart / explChart
+                           frontPlot  / backPlot  / questionPlot  / explPlot
+       3) per-option keys: optionSvgs:[...] / optionCharts:[...] / optionPlots:[...]
+          — or an option given as an object: {text:"...", svg:"<svg>", chart:{...}}
+     Legacy card-level keys (svg / chart / plot) still work.
+  ============================================================ */
+  function sanitizeSvg(raw){
+    let out = String(raw==null ? '' : raw);
+    out = out.replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, '');
+    out = out.replace(/<\s*\w+[^>]*>/g, (tag) => tag.replace(/\son\w+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, ''));
+    out = out.replace(/javascript\s*:/gi, '');
+    return out;
+  }
+  const VISUAL_REG = Object.create(null);
+  let visualSeq = 0;
+  function visualHtml(spec, cls){
+    if(!spec) return '';
+    const id = 'v' + (++visualSeq);
+    VISUAL_REG[id] = { type: spec.expr ? 'plot' : 'chart', spec: spec };
+    return `<div class="card-visual ${cls||''}" data-vid="${id}"><canvas class="visual-canvas" data-vid="${id}"></canvas></div>`;
+  }
+  function svgHtml(raw, cls){
+    if(!raw) return '';
+    return `<div class="card-svg ${cls||''}">${sanitizeSvg(raw)}</div>`;
+  }
+  function mountVisualsIn(root){
+    if(!root || !root.querySelectorAll) return;
+    root.querySelectorAll('canvas.visual-canvas[data-vid]').forEach((cv) => {
+      const rec = VISUAL_REG[cv.getAttribute('data-vid')];
+      if(!rec) return;
+      try{
+        if(rec.type === 'plot') requestAnimationFrame(()=> renderPlot(cv, rec.spec));
+        else requestAnimationFrame(()=> renderChartVisual(cv, rec.spec));
+      }catch(e){ console.warn('visual mount failed', e); }
+    });
+  }
+  /* richText = formatText + inline <svg> blocks preserved (they are pulled out
+     before escaping, sanitized, then put back so they render as real SVG). */
+  function richText(raw, allowHtml){
+    if(raw === undefined || raw === null) return '';
+    const svgs = [];
+    const src = String(raw).replace(/<svg[\s\S]*?<\/svg\s*>/gi, (m) => {
+      svgs.push(sanitizeSvg(m));
+      return '\u0000SVG' + (svgs.length - 1) + '\u0000';
+    });
+    let out = formatText(src, allowHtml);
+    out = out.replace(/\u0000SVG(\d+)\u0000/g, (m, i) => svgs[+i] ? `<span class="inline-svg-wrap">${svgs[+i]}</span>` : '');
+    return out;
+  }
+  function normOption(opt){
+    if(opt == null) return { text:'', svg:'', graph:null };
+    if(typeof opt === 'string') return { text:opt, svg:'', graph:null };
+    const text = opt.text != null ? opt.text : (opt.__text != null ? opt.__text : (opt.label != null ? opt.label : (opt.t != null ? opt.t : '')));
+    return { text:text, svg:opt.svg || '', graph:opt.chart || opt.plot || null };
+  }
+  function optionText(opt){ return normOption(opt).text; }
+  function optionVisuals(card, i, opt){
+    const n = normOption(opt);
+    if(n.svg || n.graph) return svgHtml(n.svg, 'opt-svg') + visualHtml(n.graph, 'opt-visual');
+    const svgs  = card.optionSvgs  || card.optionsSvg  || [];
+    const charts= card.optionCharts|| card.optionsChart|| [];
+    const plots = card.optionPlots || card.optionsPlot || [];
+    return svgHtml(svgs[i], 'opt-svg') + visualHtml(charts[i] || plots[i], 'opt-visual');
+  }
+  /* per-field visuals, e.g. visualsFor(c,'front') -> frontSvg/frontChart/frontPlot */
+  function visualsFor(c, key){
+    if(!c) return '';
+    const cap = key ? key.charAt(0).toUpperCase() + key.slice(1) : '';
+    const svg   = c[key+'Svg']   || c[key+'svg']   || (cap ? c['svg'+cap]   : '');
+    const chart = c[key+'Chart'] || c[key+'chart'] || (cap ? c['chart'+cap] : '');
+    const plot  = c[key+'Plot']  || c[key+'plot']  || (cap ? c['plot'+cap]  : '');
+    return svgHtml(svg) + visualHtml(chart || plot);
+  }
+  function cardHasVisual(c){
+    if(!c) return false;
+    if(c.svg || c.chart || c.plot) return true;
+    return ['front','back','question','expl'].some(k => visualsFor(c, k).length > 0)
+      || (c.optionSvgs && c.optionSvgs.length) || (c.optionCharts && c.optionCharts.length)
+      || (c.optionPlots && c.optionPlots.length)
+      || (Array.isArray(c.options) && c.options.some(o => o && typeof o === 'object' && (o.svg || o.chart || o.plot)))
+      || /<svg[\s\S]*?<\/svg\s*>/i.test([c.front,c.back,c.question,c.explanation].filter(Boolean).join(' '))
+      || (Array.isArray(c.options) && c.options.some(o => typeof o === 'string' && /<svg[\s\S]*?<\/svg\s*>/i.test(o)));
+  }
+
+  /* ============================================================
      TEXT FORMATTING + KATEX
   ============================================================ */
   function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1288,7 +1534,8 @@
           delimiters:[ {left:'$$',right:'$$',display:true}, {left:'\\[',right:'\\]',display:true},
                        {left:'$',right:'$',display:false}, {left:'\\(',right:'\\)',display:false} ],
           throwOnError:false,
-          strict:false
+          strict:false,
+          ignoredTags:['script','noscript','style','textarea','pre','code','option','svg']
         });
       }catch(e){ console.warn('KaTeX render issue', e); }
     }
@@ -1525,7 +1772,7 @@
     let h=0; for(let i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0;
     return palette[h%palette.length];
   }
-  function deckStats(cards){ let mcq=0,basic=0,visual=0; cards.forEach(c=>{ if(c.type==='mcq')mcq++; else basic++; if(c.plot||c.chart||c.svg)visual++; }); return {mcq,basic,visual}; }
+  function deckStats(cards){ let mcq=0,basic=0,visual=0; cards.forEach(c=>{ if(c.type==='mcq')mcq++; else basic++; if(cardHasVisual(c))visual++; }); return {mcq,basic,visual}; }
   function computeLibraryStats(){
     let cards=0, msum=0, mcount=0, recent=0;
     library.forEach(d=>{ cards += d.count||0; if((d.masteryPct||0)>0){ msum+=d.masteryPct; mcount++; }
@@ -1928,9 +2175,9 @@
      STUDY SHEET (ALL Q&A ROWS)
   ============================================================ */
   function cardQuestionText(c){ return c.type === 'mcq' ? c.question : c.front; }
-  function cardAnswerText(c){ return c.type === 'mcq' ? (c.options && c.options[c.answer]) : c.back; }
+  function cardAnswerText(c){ return c.type === 'mcq' ? (c.options ? optionText(c.options[c.answer]) : '') : c.back; }
   function cardSearchText(c){
-    return [c.tag, c.type, cardQuestionText(c), cardAnswerText(c), ...(c.options||[]), c.explanation]
+    return [c.tag, c.type, cardQuestionText(c), cardAnswerText(c), ...(c.options||[]).map(optionText), c.explanation]
       .filter(Boolean).join(' ').toLowerCase();
   }
   function progressLabel(idx){
@@ -1954,15 +2201,15 @@
       const options = (c.options||[]).map((opt,i) => `
         <div class="sheet-option ${i===c.answer?'correct':''}">
           <span class="sheet-option-letter">${letters[i] || (i+1)}</span>
-          <span>${formatText(opt)}</span>
+          <span class="opt-body">${richText(optionText(opt))}${optionVisuals(c,i,opt)}</span>
         </div>`).join('');
-      const explanation = c.explanation ? `<div class="sheet-explanation"><strong>Why:</strong> ${formatText(c.explanation)}</div>` : '';
+      const explanation = c.explanation ? `<div class="sheet-explanation"><strong>Why:</strong> ${richText(c.explanation)}${visualsFor(c,'expl')}</div>` : '';
       return `
-        <div class="sheet-text sheet-answer"><strong>Correct answer: ${answerLetter}</strong> — ${formatText(c.options[c.answer])}</div>
+        <div class="sheet-text sheet-answer"><strong>Correct answer: ${answerLetter}</strong> — ${richText(optionText(c.options[c.answer]))}</div>
         <div class="sheet-options">${options}</div>
         ${explanation}`;
     }
-    return `<div class="sheet-text sheet-answer">${formatText(c.back)}</div>${sheetSvg(c)}`;
+    return `<div class="sheet-text sheet-answer">${richText(c.back)}</div>${visualsFor(c,'back') || sheetSvg(c)}`;
   }
   function sheetRowHTML(c, idx){
     const tag = c.tag ? `<span class="sheet-chip" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '';
@@ -2078,9 +2325,8 @@
     const idx = session.order[session.pos];
     const tagHtml = c.tag ? `<span class="card-tag" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '<span></span>';
     const indexHtml = `<span class="card-index">CARD ${String(session.pos+1).padStart(3,'0')} / ${String(session.order.length).padStart(3,'0')}</span>`;
-    const visualHTML = (c.chart || c.plot) ? `<div class="card-visual"><canvas class="visual-canvas"></canvas></div>` : '';
-    const svgHTML = c.svg ? `<div class="card-svg">${c.svg}</div>` : '';
-    const visualBlock = visualHTML + svgHTML;
+    // Legacy card-level visuals (svg/chart/plot) apply to the question side.
+    const legacyVis = svgHtml(c.svg) + visualHtml(c.chart || c.plot);
 
     if(c.type === 'mcq'){
       const alreadyAnswered = session.mcqAnswers[idx] !== undefined;
@@ -2089,8 +2335,8 @@
       faceFront.innerHTML = `
         <div class="card-head">${tagHtml}${indexHtml}</div>
         <div class="card-label">Multiple choice</div>
-        <div class="card-content small">${formatText(c.question)}</div>
-        ${visualBlock}
+        <div class="card-content small">${richText(c.question)}</div>
+        ${visualsFor(c,'question') || legacyVis}
         <div class="mcq-options" id="mcqOptions"></div>
         <div id="mcqResultBanner"></div>
         <div class="flip-hint">${alreadyAnswered ? 'Tap card or press space to see explanation ↻' : 'Choose an answer'}</div>
@@ -2100,12 +2346,12 @@
       c.options.forEach((opt,i) => {
         const btn = document.createElement('button');
         btn.className = 'mcq-option';
-        btn.innerHTML = `<span class="tab">${letters[i]||i+1}</span><span>${formatText(opt)}</span>`;
+        btn.innerHTML = `<span class="tab">${letters[i]||i+1}</span><span class="opt-body">${richText(optionText(opt))}${optionVisuals(c,i,opt)}</span>`;
         btn.addEventListener('click', () => selectMcqOption(idx, i));
         optWrap.appendChild(btn);
       });
       renderMath(faceFront);
-      mountVisual(faceFront, c);
+      mountVisualsIn(faceFront);
       if(alreadyAnswered) applyMcqState(idx, session.mcqAnswers[idx]);
       // Build back face with explanation
       buildMcqBackFace(c, idx, alreadyAnswered);
@@ -2115,19 +2361,19 @@
       faceFront.innerHTML = `
         <div class="card-head">${tagHtml}${indexHtml}</div>
         <div class="card-label">Question</div>
-        <div class="card-content">${formatText(c.front)}</div>
-        ${visualBlock}
+        <div class="card-content">${richText(c.front)}</div>
+        ${visualsFor(c,'front') || legacyVis}
         <div class="flip-hint">Tap card or press space ↻</div>
       `;
       faceBack.innerHTML = `
         <div class="card-head">${tagHtml}${indexHtml}</div>
         <div class="card-label">Answer</div>
-        <div class="card-content">${formatText(c.back)}</div>
-        ${c.svg ? `<div class="card-svg">${c.svg}</div>` : ''}
+        <div class="card-content">${richText(c.back)}</div>
+        ${visualsFor(c,'back')}
         <div class="flip-hint">Tap card to flip back ↻</div>
       `;
       renderMath(faceFront); renderMath(faceBack);
-      mountVisual(faceFront, c);
+      mountVisualsIn(faceFront);
       const graded = session.grades[idx];
       if(graded){ gradeRow.classList.add('show'); }
     }
@@ -2304,20 +2550,23 @@
     }
     let explanationHTML = '';
     if(c.explanation){
-      explanationHTML = '<div class="explanation"><span class="exp-label">Explanation</span><div>' + formatText(c.explanation) + '</div></div>';
+      explanationHTML = '<div class="explanation"><span class="exp-label">Explanation</span><div>' + richText(c.explanation) + visualsFor(c,'expl') + '</div></div>';
     }
+    const legacyVisBack = svgHtml(c.svg) + visualHtml(c.chart || c.plot);
     const tagHtml2 = c.tag ? '<span class="card-tag" style="background:' + tagColor(c.tag) + '">' + escapeHtml(c.tag) + '</span>' : '<span></span>';
     const indexHtml2 = '<span class="card-index">CARD ' + String(session.pos+1).padStart(3,'0') + ' / ' + String(session.order.length).padStart(3,'0') + '</span>';
     faceBack.innerHTML = `
       <div class="card-head">${tagHtml2}${indexHtml2}</div>
       <div class="card-label">Answer & Explanation</div>
-      <div class="card-content small" style="font-size:14px;margin-bottom:8px;">${formatText(c.question)}</div>
+      <div class="card-content small" style="font-size:14px;margin-bottom:8px;">${richText(c.question)}</div>
+      ${visualsFor(c,'question') || legacyVisBack}
       ${resultSummary}
-      <div style="margin:6px 0;font-size:13px;color:var(--paper-ink-soft);"><strong style="color:var(--emerald);">Correct answer: ${correctLabel}</strong> — ${formatText(c.options[c.answer])}</div>
+      <div style="margin:6px 0;font-size:13px;color:var(--paper-ink-soft);"><strong style="color:var(--emerald);">Correct answer: ${correctLabel}</strong> — ${richText(optionText(c.options[c.answer]))}</div>
       ${explanationHTML}
       <div class="flip-hint">Tap card to flip back ↻</div>
     `;
     renderMath(faceBack);
+    mountVisualsIn(faceBack);
   }
 
   function toggleFlip(){
@@ -2580,7 +2829,7 @@
     const missedHTML = missed.length ? `<div class="missed-list">${missed.map(idx => {
       const c = activeDeck.cards[idx];
       const q = c.type === 'mcq' ? c.question : c.front;
-      const a = c.type === 'mcq' ? c.options[c.answer] : c.back;
+      const a = c.type === 'mcq' ? optionText(c.options[c.answer]) : c.back;
       return `<div class="missed-item"><div class="q">${formatText(q)}</div><div class="a">Answer: ${formatText(a)}</div></div>`;
     }).join('')}</div>` : '';
 
@@ -3196,5 +3445,5 @@
 
 })();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3af0e46391eaab8',t:'MTc4OTM4NTM4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
