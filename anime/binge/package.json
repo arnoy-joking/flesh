@@ -1,0 +1,14 @@
+{
+  "name": "anime-class-player",
+  "version": "1.0.0",
+  "description": "Turn any long YouTube recorded class into a binge-worthy anime season of small, winnable episodes.",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 3000 --bind 0.0.0.0",
+    "build": "python3 build.py",
+    "test": "node --check app.js && node --check ui.js && node tests/logic.test.mjs && node tests/e2e-fake.mjs && node tests/e2e-extra.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

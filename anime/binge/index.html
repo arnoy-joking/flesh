@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anime Class Player — turn boring lectures into anime seasons</title>
+<meta name="description" content="Turn any long YouTube recorded class into a binge-worthy anime season of small, winnable episodes.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0f1e'/%3E%3Cpath d='M9 6.5v11l9-5.5z' fill='%23ff3d81'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="bg-fx" aria-hidden="true"></div>
+
+<!-- ══════════════════════ TOP BAR ══════════════════════ -->
+<header id="topbar">
+  <div class="tb-left">
+    <button class="icon-btn only-player" id="btn-panel-left" title="Toggle episode panel">▤</button>
+    <div class="logo" id="logo">
+      <span class="logo-mark">▶</span>
+      <span class="logo-text">ANIME&nbsp;CLASS&nbsp;PLAYER<small>アニメ・クラス・プレイヤー</small></span>
+    </div>
+  </div>
+  <div class="tb-center">
+    <div class="rank-chip" id="rank-chip" title="Your rank">
+      <span class="rank-tag">RANK</span>
+      <span class="rank-letter" id="rank-letter">E</span>
+      <span class="rank-bar"><i id="rank-fill"></i></span>
+      <span class="xp-text" id="xp-text">0 XP</span>
+    </div>
+    <div class="chip" id="streak-chip" title="Daily streak — clear at least one episode every day">🔥 <b id="streak-num">0</b><span class="chip-sub">day streak</span></div>
+    <div class="chip" id="daily-chip" title="Daily quest — clear 3 episodes today">🎯 <b id="daily-num">0/3</b></div>
+  </div>
+  <div class="tb-right">
+    <button class="icon-btn" id="btn-stats" title="Stats">📊</button>
+    <button class="icon-btn" id="btn-ach" title="Achievements">🏆</button>
+    <button class="icon-btn" id="btn-settings" title="Settings">⚙️</button>
+    <button class="icon-btn" id="btn-help" title="Help & shortcuts">❓</button>
+    <button class="icon-btn only-player" id="btn-home" title="Back to seasons">🏠</button>
+    <button class="icon-btn only-player" id="btn-panel-right" title="Toggle mission panel">🍙</button>
+  </div>
+</header>
+
+<main id="app">
+
+  <!-- ══════════════════════ HOME ══════════════════════ -->
+  <section class="screen on" id="screen-home">
+    <div class="home-hero">
+      <div class="hero-inner">
+        <div class="hero-kicker">「退屈な授業を、熱血アニメに」</div>
+        <h1 class="hero-title">ANIME CLASS<br>PLAYER</h1>
+        <p class="hero-sub">Your 2-hour recorded lecture is actually a <b>12-episode anime season</b>.<br>
+        Your brain just never got the memo. Until now.</p>
+
+        <div class="start-card" id="continue-card" hidden>
+          <div class="sc-info">
+            <div class="sc-label">▶ CONTINUE WATCHING</div>
+            <div class="sc-title" id="continue-title">—</div>
+            <div class="sc-sub" id="continue-sub">—</div>
+          </div>
+          <button class="btn btn-primary" id="btn-continue">RESUME ▶</button>
+        </div>
+
+        <div class="start-card">
+          <div class="sc-label">START A NEW SEASON</div>
+          <div class="form-row">
+            <input id="input-url" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="Paste any YouTube link… 40 min, 2 h, 6 h, 10 h — anything goes">
+          </div>
+          <div class="form-row split">
+            <label class="field-label" title="How long should each episode be?">
+              <span>EPISODE LENGTH</span>
+              <select id="select-eplen">
+                <option value="auto" selected>Auto (recommended)</option>
+                <option value="15">15 minutes</option>
+                <option value="20">20 minutes</option>
+              </select>
+            </label>
+            <label class="field-label cc" title="Ask YouTube to show captions from the start">
+              <span>CAPTIONS (CC)</span>
+              <label class="switch"><input type="checkbox" id="chk-cc"><i></i></label>
+            </label>
+            <button class="btn btn-primary big" id="btn-start">START SEASON ⚔️</button>
+          </div>
+          <div class="form-error" id="home-error" hidden></div>
+          <div class="fineprint">100% illusion — the video is never downloaded or cut. It just gets an anime costume.</div>
+        </div>
+
+        <div class="features">
+          <div class="feature-card"><div class="fc-icon">📺</div><div class="fc-t">Real episode player</div><div class="fc-d">Each episode has its own progress bar, its own 20:00 clock, its own title card. You never see the 6-hour monster underneath.</div></div>
+          <div class="feature-card"><div class="fc-icon">👹</div><div class="fc-t">Boss fights</div><div class="fc-d">After every episode, a 30-second recall battle. Type what you remember to deal damage. Active recall, disguised as combat.</div></div>
+          <div class="feature-card"><div class="fc-icon">🔥</div><div class="fc-t">XP, ranks &amp; streaks</div><div class="fc-d">Climb from Rank E to SSS. Daily quests, combos, achievements. Dopamine on a schedule.</div></div>
+          <div class="feature-card"><div class="fc-icon">💧</div><div class="fc-t">Forced breaks</div><div class="fc-d">Every episode clear locks in a 2-minute recharge break — water, stretch, eyes off screen. Binge-proof… ish.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ LOADING ══════════════════════ -->
+  <section class="screen" id="screen-loading">
+    <div class="load-wrap">
+      <div class="load-slash" aria-hidden="true"><i class="a"></i><i class="b"></i></div>
+      <div class="load-jp">召喚中…</div>
+      <div class="load-title">SUMMONING SEASON</div>
+      <div class="load-status" id="load-status">Summoning the YouTube player…</div>
+      <div class="load-error" id="load-error" hidden>
+        <div class="le-jp">失敗</div>
+        <div id="load-error-msg">Something went wrong.</div>
+        <div class="le-btns">
+          <button class="btn btn-primary" id="btn-load-retry">RETRY</button>
+          <button class="btn btn-ghost" id="btn-load-home">BACK</button>
+        </div>
+        <div style="margin-top:12px"><a class="btn-link" id="load-error-yt" target="_blank" rel="noopener">open this video on YouTube ↗</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ PLAYER ══════════════════════ -->
+  <section class="screen" id="screen-player">
+
+    <!-- LEFT : EPISODE LIST -->
+    <aside class="panel" id="panel-left">
+      <div class="panel-head">
+        <div class="ph-kicker">EPISODES</div>
+        <div class="season-title" id="season-title">Season 1</div>
+        <div class="season-meta" id="season-meta">— episodes</div>
+        <div class="season-bar"><i id="season-fill"></i></div>
+        <div class="season-pct" id="season-pct">0% watched</div>
+      </div>
+      <div class="episode-list" id="episode-list"></div>
+    </aside>
+
+    <!-- CENTER : STAGE -->
+    <div id="stage">
+      <div id="player-shell">
+        <div id="yt-mount"></div>
+        <div id="top-shade" aria-hidden="true"></div>
+        <div id="click-catcher" aria-label="Toggle play"></div>
+        <button id="focus-crystal" hidden title="Focus crystal! Click me!">⚡</button>
+
+        <div id="ep-banner" aria-hidden="true">
+          <div class="b-line1"><span class="b-jp" id="banner-jp">第一話</span><span class="b-num" id="banner-num">EPISODE 1</span></div>
+          <div class="b-title" id="banner-title">—</div>
+        </div>
+
+        <!-- intro title card -->
+        <div class="ov" id="ov-intro" hidden>
+          <div class="intro-slash a" aria-hidden="true"></div>
+          <div class="intro-slash b" aria-hidden="true"></div>
+          <div class="intro-inner">
+            <div class="intro-jp" id="intro-jp">第一話</div>
+            <div class="intro-num" id="intro-num">EPISODE 1</div>
+            <div class="intro-title" id="intro-title">The Journey Begins</div>
+            <div class="intro-mission" id="intro-mission">📜 Mission: —</div>
+            <div class="intro-hint">click anywhere to skip intro</div>
+          </div>
+        </div>
+
+        <!-- pause / start overlay -->
+        <div class="ov" id="ov-pause" hidden>
+          <div class="pause-inner">
+            <button class="bigplay" id="btn-bigplay" aria-label="Play episode">▶</button>
+            <div class="pause-cap" id="pause-cap">EPISODE 1 — tap to begin</div>
+          </div>
+        </div>
+
+        <!-- sleepy nudge -->
+        <div class="ov" id="ov-nudge" hidden>
+          <div class="nudge-inner">
+            <div class="nudge-mascot">😤</div>
+            <div class="nudge-text">Senpai… the lecture won't watch itself.</div>
+            <button class="btn btn-primary" id="btn-nudge-back">I'M BACK ⚔️</button>
+          </div>
+        </div>
+
+        <!-- episode clear -->
+        <div class="ov" id="ov-clear" hidden>
+          <div class="clear-burst" aria-hidden="true"></div>
+          <div class="clear-head">
+            <div class="clear-jp">エピソードクリア</div>
+            <div class="clear-stamp">EPISODE&nbsp;CLEAR!</div>
+            <div class="clear-ep" id="clear-ep">EPISODE 1</div>
+            <div class="clear-combo" id="clear-combo" hidden>🔥 COMBO ×2</div>
+          </div>
+          <div class="clear-grid">
+            <div class="clear-col">
+              <div class="clear-sub">VICTORY CHECKLIST</div>
+              <div id="clear-checklist"></div>
+              <ul class="tally" id="clear-tally"></ul>
+            </div>
+            <div class="clear-col cright">
+              <div class="clear-sub">RECHARGE BREAK</div>
+              <div class="break-wrap">
+                <svg class="break-ring" viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+                  <circle class="ring-arc" id="break-arc" cx="60" cy="60" r="52"></circle>
+                </svg>
+                <div class="break-time" id="break-time">2:00</div>
+              </div>
+              <div class="break-tip" id="break-tip">💧 Hydrate, warrior.</div>
+              <button class="btn btn-boss" id="btn-boss">👹 BOSS BATTLE</button>
+              <button class="btn btn-primary big" id="btn-next-ep">NEXT EPISODE ▶</button>
+              <button class="btn btn-ghost small" id="btn-replay">↺ replay this episode</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- boss battle -->
+        <div class="ov" id="ov-boss" hidden>
+          <div class="boss-timer" aria-hidden="true"><i id="boss-timer-fill"></i></div>
+          <div class="boss-stage">
+            <div class="boss-emoji" id="boss-emoji">👹</div>
+            <div class="boss-dmg" id="boss-dmg" aria-hidden="true"></div>
+            <div class="boss-name" id="boss-name">THE FORGETTING CURVE</div>
+            <div class="boss-sub" id="boss-sub">Weakness: ACTIVE RECALL</div>
+            <div class="boss-hp" id="boss-hp"><i></i><i></i><i></i></div>
+            <div class="boss-form">
+              <input id="boss-input" maxlength="140" placeholder="Type something you remember from this episode…" autocomplete="off">
+              <button class="btn btn-primary" id="btn-boss-attack">STRIKE ⚔️</button>
+            </div>
+            <div class="boss-log" id="boss-log"></div>
+            <div class="boss-verdict" id="boss-verdict" hidden></div>
+            <button class="btn-link" id="btn-boss-flee">flee battle (no reward)</button>
+          </div>
+        </div>
+
+        <!-- season finale -->
+        <div class="ov" id="ov-finale" hidden>
+          <div class="finale-kanji">完</div>
+          <div class="finale-title">SEASON COMPLETE!</div>
+          <div class="finale-sub" id="finale-sub">You watched the entire season. Legendary.</div>
+          <div class="finale-stats" id="finale-stats"></div>
+          <div class="finale-btns">
+            <button class="btn btn-primary big" id="btn-replay-season">↺ REPLAY SEASON</button>
+            <button class="btn btn-ghost big" id="btn-new-season">NEW SEASON ⚔️</button>
+          </div>
+        </div>
+
+        <canvas id="fx-confetti" aria-hidden="true"></canvas>
+
+        <!-- custom controls -->
+        <div id="controls">
+          <div class="c-left">
+            <button class="cbtn" id="btn-prev" title="Previous episode (P)">⏮</button>
+            <button class="cbtn" id="btn-back10" title="Back 10s (←)">⏪</button>
+            <button class="cbtn play" id="btn-play" title="Play/Pause (Space)">▶</button>
+            <button class="cbtn" id="btn-fwd10" title="Forward 10s (→)">⏩</button>
+            <button class="cbtn" id="btn-next" title="Next episode (N)">⏭</button>
+          </div>
+          <div class="seek-wrap">
+            <div id="seek">
+              <div class="seek-buffer" id="seek-buffer"></div>
+              <div class="seek-fill" id="seek-fill"></div>
+              <div class="seek-handle" id="seek-handle"></div>
+            </div>
+            <div class="seek-tip" id="seek-tip" hidden>00:00</div>
+          </div>
+          <div class="c-time"><span id="time-cur">00:00</span><span class="t-sep">/</span><span id="time-dur">20:00</span></div>
+          <div class="c-right">
+            <div class="pop-wrap">
+              <button class="cbtn" id="btn-speed" title="Playback speed"><span id="speed-label">1×</span></button>
+              <div class="pop" id="speed-pop" hidden></div>
+            </div>
+            <div class="pop-wrap">
+              <button class="cbtn" id="btn-volume" title="Volume (M)">🔊</button>
+              <div class="pop vol" id="vol-pop" hidden><input type="range" id="vol-range" min="0" max="100" value="85"></div>
+            </div>
+            <button class="cbtn" id="btn-fullscreen" title="Fullscreen (F)">⛶</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="under-player">
+        <div class="uchip" id="combo-chip" hidden>🔥 <b>COMBO ×2</b></div>
+        <div class="uchip" id="upnext-chip">⏭ <span>UP NEXT</span></div>
+        <div class="uchip" id="today-chip">📺 <span>Today 0m</span></div>
+        <div class="uchip" id="crystal-chip">💎 <span>0</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT : MISSION -->
+    <aside class="panel" id="panel-right">
+      <div class="panel-head"><div class="ph-kicker">NOW AIRING</div></div>
+      <div class="rcard mission">
+        <div class="rc-kicker">📜 THIS EPISODE'S MISSION</div>
+        <div class="rc-ep" id="mission-ep">EPISODE 1</div>
+        <div class="rc-text" id="mission-text">—</div>
+      </div>
+      <div class="rcard">
+        <div class="rc-kicker">🗒️ BATTLE NOTES</div>
+        <textarea id="notes-area" placeholder="Jot key terms, timestamps, questions… (saved automatically)"></textarea>
+      </div>
+      <div class="rcard boss-prev">
+        <div class="rc-kicker">⚔️ BOSS AFTER THIS EPISODE</div>
+        <div class="bp-row"><span class="bp-emoji" id="boss-prev-emoji">👹</span><span class="bp-name" id="boss-prev-name">The Forgetting Curve</span></div>
+        <div class="bp-desc" id="boss-prev-desc">Defeat it with active recall.</div>
+      </div>
+      <div class="rcard">
+        <div class="rc-kicker">🎯 DAILY QUEST</div>
+        <div class="dq-bar"><i id="dq-fill"></i></div>
+        <div class="rc-sub" id="dq-text">Clear 3 episodes today — 0/3</div>
+      </div>
+      <div class="rcard">
+        <div class="rc-kicker">🔥 STREAK</div>
+        <div class="st-big" id="streak-big">0 days</div>
+        <div class="rc-sub" id="streak-sub">Clear one episode a day to keep the flame alive.</div>
+      </div>
+    </aside>
+
+  </section>
+</main>
+
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<div id="rankup-fx" hidden>
+  <div class="ru-card">
+    <div class="ru-kicker">RANK UP</div>
+    <div class="ru-letter" id="rankup-letter">B</div>
+    <div class="ru-sub">階級昇格</div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
