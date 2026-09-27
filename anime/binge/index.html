@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <!-- Anime Class Player — single-file build. Works offline (except the YouTube stream itself). -->
 
@@ -134,13 +133,7 @@ body.on-player .only-player{display:grid}
 /* ── screens ───────────────────────────────────── */
 .screen{display:none;height:calc(100dvh - 58px)}
 .screen.on{display:block}
-#screen-player.on{display:grid;grid-template-columns:320px minmax(0,1fr) 344px;
-  height:calc(100dvh - 58px)}
-body.lc #screen-player.on{grid-template-columns:0 minmax(0,1fr) 344px}
-body.rc #screen-player.on{grid-template-columns:320px minmax(0,1fr) 0}
-body.lc.rc #screen-player.on{grid-template-columns:0 minmax(0,1fr) 0}
-body.lc #panel-left{display:none}
-body.rc #panel-right{display:none}
+#screen-player.on{display:flex;height:calc(100dvh - 58px)}
 
 /* ── HOME ──────────────────────────────────────── */
 #screen-home{overflow-y:auto}
@@ -221,8 +214,18 @@ body.rc #panel-right{display:none}
 .le-btns{display:flex;gap:10px;justify-content:center}
 
 /* ── PLAYER LAYOUT ─────────────────────────────── */
-.panel{background:rgba(11,15,30,.72);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-#panel-right{border-right:none;border-left:1px solid var(--line)}
+.panel{
+  position:relative;flex:0 0 auto;width:320px;overflow:hidden;
+  background:rgba(11,15,30,.72);
+  transition:width .28s cubic-bezier(.4,0,.2,1);
+}
+#panel-right{width:344px}
+.panel-inner{display:flex;flex-direction:column;height:100%;width:320px;min-height:0}
+#panel-left .panel-inner{border-right:1px solid var(--line)}
+#panel-right .panel-inner{width:344px;gap:12px;padding:14px;overflow-y:auto;border-left:1px solid var(--line)}
+body.closed-left #panel-left{width:0}
+body.closed-right #panel-right{width:0}
+#panel-scrim{display:none}
 .panel-head{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
 .ph-kicker{font-size:10px;letter-spacing:.3em;color:var(--cyan);font-weight:800}
 .season-title{font-weight:900;font-style:italic;font-size:17px;margin-top:6px;line-height:1.25}
@@ -231,7 +234,7 @@ body.rc #panel-right{display:none}
 .season-bar i{display:block;height:100%;width:0;background:var(--grad);transition:width .6s}
 .season-pct{font-size:10.5px;color:var(--dim);margin-top:5px;letter-spacing:.05em}
 
-.episode-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.episode-list{flex:1;min-height:0;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
 .episode-list::-webkit-scrollbar{width:8px}
 .episode-list::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
 .ep-card{
@@ -263,7 +266,7 @@ body.rc #panel-right{display:none}
 
 /* ── STAGE ─────────────────────────────────────── */
 #stage{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:16px;min-width:0;gap:10px;overflow:auto}
+  padding:16px;min-width:0;gap:10px;overflow:auto;flex:1 1 auto}
 #player-shell{
   position:relative;width:min(100%,calc((100dvh - 225px)*16/9));aspect-ratio:16/9;
   background:#000;overflow:hidden;user-select:none;
@@ -516,7 +519,6 @@ body.rc #panel-right{display:none}
 #upnext-chip span b{color:var(--txt)}
 
 /* ── RIGHT PANEL ───────────────────────────────── */
-#panel-right{overflow-y:auto;gap:12px;padding:14px;display:flex;flex-direction:column}
 #panel-right::-webkit-scrollbar{width:8px}
 #panel-right::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
 .rcard{padding:14px;background:rgba(255,255,255,.028);border:1px solid var(--line);clip-path:var(--clip)}
@@ -640,23 +642,18 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
 
 /* ── RESPONSIVE ────────────────────────────────── */
 @media (max-width:1160px){
-  #screen-player.on{grid-template-columns:minmax(0,1fr)}
-  body.lc #screen-player.on,body.rc #screen-player.on,body.lc.rc #screen-player.on{grid-template-columns:minmax(0,1fr)}
-  .panel{position:fixed;top:58px;bottom:0;width:min(340px,88vw);z-index:60;
-    background:rgba(9,12,26,.98);backdrop-filter:blur(14px);transition:transform .28s}
-  #panel-left{left:0;border-right:1px solid var(--line2)}
-  #panel-right{right:0;border-left:1px solid var(--line2)}
-  body:not(.lc) #panel-left{transform:translateX(0)}
-  body.lc #panel-left{transform:translateX(-105%);display:flex}
-  body.lc #panel-left{display:flex!important}
-  body:not(.rc) #panel-right{transform:translateX(0)}
-  body.rc #panel-right{transform:translateX(105%);display:flex!important}
-  body.rc #panel-right{display:flex!important}
-  .only-player{display:grid}
-}
-@media (min-width:1161px){
-  body:not(.lc) #panel-left{display:flex}
-  body:not(.rc) #panel-right{display:flex}
+  /* panels become overlays, CLOSED by default; toggle buttons slide them in */
+  #panel-scrim{display:none;position:fixed;top:58px;left:0;right:0;bottom:0;z-index:55;
+    background:rgba(4,6,14,.55)}
+  body.open-left #panel-scrim,body.open-right #panel-scrim{display:block}
+  .panel{position:fixed;top:58px;bottom:0;z-index:60;width:min(340px,88vw);
+    background:rgba(9,12,26,.98);backdrop-filter:blur(14px);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  #panel-left{left:0;transform:translateX(-106%)}
+  #panel-right{right:0;transform:translateX(106%)}
+  body.open-left #panel-left{transform:translateX(0)}
+  body.open-right #panel-right{transform:translateX(0)}
+  #panel-left .panel-inner,#panel-right .panel-inner{width:100%}
 }
 @media (max-width:760px){
   .tb-center{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
@@ -784,9 +781,11 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
 
   <!-- ══════════════════════ PLAYER ══════════════════════ -->
   <section class="screen" id="screen-player">
+    <div id="panel-scrim"></div>
 
     <!-- LEFT : EPISODE LIST -->
     <aside class="panel" id="panel-left">
+      <div class="panel-inner">
       <div class="panel-head">
         <div class="ph-kicker">EPISODES</div>
         <div class="season-title" id="season-title">Season 1</div>
@@ -795,6 +794,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
         <div class="season-pct" id="season-pct">0% watched</div>
       </div>
       <div class="episode-list" id="episode-list"></div>
+      </div>
     </aside>
 
     <!-- CENTER : STAGE -->
@@ -947,6 +947,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
 
     <!-- RIGHT : MISSION -->
     <aside class="panel" id="panel-right">
+      <div class="panel-inner">
       <div class="panel-head"><div class="ph-kicker">NOW AIRING</div></div>
       <div class="rcard mission">
         <div class="rc-kicker">📜 THIS EPISODE'S MISSION</div>
@@ -971,6 +972,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
         <div class="rc-kicker">🔥 STREAK</div>
         <div class="st-big" id="streak-big">0 days</div>
         <div class="rc-sub" id="streak-sub">Clear one episode a day to keep the flame alive.</div>
+      </div>
       </div>
     </aside>
 
@@ -2551,9 +2553,13 @@ function appendNote(txt){
 }
 
 /* ─────────────── WIRING ─────────────── */
+const panelMQ = (typeof matchMedia !== 'undefined') ? matchMedia('(max-width:1160px)') : null;
 function applyPanels(){
-  document.body.classList.toggle('lc', !!settings.lc);
-  document.body.classList.toggle('rc', !!settings.rc);
+  const mobile = !!(panelMQ && panelMQ.matches);
+  // desktop: lc/rc persist as "collapsed"; mobile: panels are overlays, closed by default
+  document.body.classList.toggle('closed-left',  !mobile && !!settings.lc);
+  document.body.classList.toggle('closed-right', !mobile && !!settings.rc);
+  document.body.classList.remove('open-left', 'open-right');
 }
 
 function toggleFullscreen(){
@@ -2601,8 +2607,15 @@ function wireAll(){
   $('#btn-help').addEventListener('click', openHelp);
   $('#btn-home').addEventListener('click', goHome);
   $('#logo').addEventListener('click', () => { if (S.screen === 'player') goHome(); });
-  $('#btn-panel-left').addEventListener('click', () => { settings.lc = !settings.lc; saveSettings(); applyPanels(); });
-  $('#btn-panel-right').addEventListener('click', () => { settings.rc = !settings.rc; saveSettings(); applyPanels(); });
+  $('#btn-panel-left').addEventListener('click', () => {
+    if (panelMQ && panelMQ.matches) document.body.classList.toggle('open-left');
+    else { settings.lc = !settings.lc; saveSettings(); applyPanels(); }
+  });
+  $('#btn-panel-right').addEventListener('click', () => {
+    if (panelMQ && panelMQ.matches) document.body.classList.toggle('open-right');
+    else { settings.rc = !settings.rc; saveSettings(); applyPanels(); }
+  });
+  $('#panel-scrim').addEventListener('click', () => { document.body.classList.remove('open-left', 'open-right'); });
   $('#modal-root').addEventListener('click', e => { if (e.target.closest('.modal-close')) closeModal(); });
 
   /* home */
@@ -2773,6 +2786,7 @@ function boot(){
   loadSettings();
   loadGlobal();
   applyPanels();
+  if (panelMQ && panelMQ.addEventListener) panelMQ.addEventListener('change', applyPanels);
   renderScreens();
   updateTopbar(false);
   renderHomeContinue();
