@@ -670,6 +670,21 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
   *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important}
 }
 
+/* ── AI NAMES MODAL ────────────────────────────── */
+#btn-names{width:100%;margin-top:10px;font-size:10px;padding:7px 10px;letter-spacing:.14em}
+.prompt-box{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:11px;line-height:1.6;
+  color:var(--dim);background:rgba(7,9,18,.7);border:1px solid var(--line2);padding:12px;max-height:220px;
+  overflow:auto;user-select:all}
+.prompt-box::selection,.paste-area::selection{background:rgba(34,211,238,.3)}
+.paste-area{width:100%;min-height:110px;resize:vertical;padding:10px;font-size:12px;font-family:var(--mono);
+  background:rgba(7,9,18,.6);border:1px solid var(--line2);clip-path:var(--clips);outline:none}
+.paste-area:focus{border-color:var(--cyan)}
+.names-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.names-status{margin-top:12px;padding:10px 12px;font-size:12.5px;line-height:1.5;clip-path:var(--clips)}
+.names-status.ok{color:var(--win);background:rgba(62,230,139,.08);border:1px solid rgba(62,230,139,.35)}
+.names-status.err{color:#ffb3c0;background:rgba(200,30,78,.1);border:1px solid rgba(255,90,90,.4)}
+.intro-summary{margin-top:10px;font-size:12px;color:var(--cyan);opacity:.9;max-width:560px}
+
 </style>
 </head>
 <body>
@@ -792,6 +807,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
         <div class="season-meta" id="season-meta">— episodes</div>
         <div class="season-bar"><i id="season-fill"></i></div>
         <div class="season-pct" id="season-pct">0% watched</div>
+        <button class="btn btn-ghost" id="btn-names" title="Optional: name this season's episodes with AI (uses the subtitles)">✨ AI EPISODE NAMES</button>
       </div>
       <div class="episode-list" id="episode-list"></div>
       </div>
@@ -819,6 +835,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
             <div class="intro-num" id="intro-num">EPISODE 1</div>
             <div class="intro-title" id="intro-title">The Journey Begins</div>
             <div class="intro-mission" id="intro-mission">📜 Mission: —</div>
+            <div class="intro-summary" id="intro-summary" hidden></div>
             <div class="intro-hint">click anywhere to skip intro</div>
           </div>
         </div>
@@ -953,6 +970,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
         <div class="rc-kicker">📜 THIS EPISODE'S MISSION</div>
         <div class="rc-ep" id="mission-ep">EPISODE 1</div>
         <div class="rc-text" id="mission-text">—</div>
+        <div class="rc-sub" id="ep-summary" hidden style="margin-top:8px"></div>
       </div>
       <div class="rcard">
         <div class="rc-kicker">🗒️ BATTLE NOTES</div>
@@ -1179,8 +1197,42 @@ function daysBetween(a, b){
 }
 
 const ACP = { clamp, hashStr, mulberry32, kanjiNum, fmtClock, fmtDur, parseYouTubeId, splitEpisodes,
-  autoEpLen, pickEpLen, makeSeasonPlan, rankInfo, daysBetween, RANKS, TITLE_A, TITLE_B, JP_SUBS,
+  autoEpLen, pickEpLen, makeSeasonPlan, rankInfo, daysBetween, normalizeNames, RANKS, TITLE_A, TITLE_B, JP_SUBS,
   MISSIONS, BOSSES, FINALE_BOSS, ACH_DEFS };
+
+/* Lenient parser for AI-generated episode names. Accepts:
+   {"episodes":[{ep,title,jp,summary}]}, a bare array, strings, alternate keys. */
+function normalizeNames(data){
+  let list = [];
+  if (Array.isArray(data)) list = data;
+  else if (data && Array.isArray(data.episodes)) list = data.episodes;
+  else if (data && Array.isArray(data.titles)) list = data.titles;
+  const out = [];
+  let order = 0;
+  for (const item of list){
+    order++;
+    let ep = null, title = null, jp = '', summary = '';
+    if (typeof item === 'string'){
+      title = item;
+    } else if (item && typeof item === 'object'){
+      title = item.title || item.name || item.episodeTitle || item.episode_title || null;
+      jp = item.jp || item.jp_sub || item.subtitle || '';
+      summary = item.summary || item.topic || item.description || '';
+      ep = item.ep || item.episode || item.index || item.number || item.n || null;
+    }
+    if (typeof title !== 'string') continue;
+    title = title.trim().slice(0, 80);
+    if (!title) continue;
+    ep = parseInt(ep, 10);
+    if (!(ep >= 1 && ep <= 999)) ep = order;
+    if (typeof jp !== 'string') jp = '';
+    jp = jp.trim().slice(0, 12);
+    if (typeof summary !== 'string') summary = '';
+    summary = summary.trim().slice(0, 120);
+    out.push({ ep, title, jp, summary });
+  }
+  return out;
+}
 
 /* ────────────────────────── STATE ────────────────────────── */
 
@@ -1466,10 +1518,62 @@ async function completeSeason(p, dur, opts){
   V = v; saveVideo(videoId, V);
   G.lastVideoId = videoId; saveGlobal();
   S.duration = v.duration; S.epLen = v.epLen; S.episodes = v.episodes;
+  applyNameMap();
   S.current = clamp(v.lastEpIndex || 0, 0, S.episodes.length - 1);
   S.screen = 'player'; S.phase = 'idle';
   Hooks.seasonBuilt();
   return true;
+}
+
+/* ────────────────────────── CUSTOM AI NAMES ────────────────────────── */
+
+/* Re-apply saved custom names onto the current season plan (after any rebuild). */
+function applyNameMap(){
+  if (!V || !V.nameMap || !S.episodes || !S.episodes.length) return;
+  for (const k of Object.keys(V.nameMap)){
+    const i = parseInt(k, 10);
+    const ep = S.episodes[i], nm = V.nameMap[k];
+    if (ep && nm && nm.title){
+      ep.title = nm.title;
+      if (nm.jp) ep.jp = nm.jp;
+      if (nm.summary) ep.summary = nm.summary;
+    }
+  }
+}
+
+/* Import names from JSON text pasted by the user (AI chat reply).
+   Throws friendly Errors; returns {applied,total,provided} on success. */
+function importNames(text){
+  if (!V || !S.episodes || !S.episodes.length) throw new Error('Start a season first, then import names.');
+  let raw = String(text == null ? '' : text).trim();
+  if (!raw) throw new Error('Paste the JSON your AI gave you (or upload the file) first.');
+  raw = raw.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();   // strip markdown fences
+  let data = null;
+  try{ data = JSON.parse(raw); }
+  catch(e){
+    const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+    if (a >= 0 && b > a){
+      try{ data = JSON.parse(raw.slice(a, b + 1)); }catch(e2){}
+    }
+    if (!data) throw new Error('That doesn\'t parse as JSON. Paste the AI\'s reply — ideally just the {"episodes":[…]} part.');
+  }
+  const eps = normalizeNames(data);
+  if (!eps.length) throw new Error('No episode names found in that JSON. Expected {"episodes":[{"ep":1,"title":"…"}]}');
+  const map = {};
+  let applied = 0;
+  for (const e of eps){
+    const i = e.ep - 1;
+    if (i < 0 || i >= S.episodes.length) continue;
+    map[i] = { title: e.title, jp: e.jp || '', summary: e.summary || '' };
+    applied++;
+  }
+  if (!applied) throw new Error(
+    'None of those names matched this season (it has ' + S.episodes.length + ' episodes, the JSON describes ' + eps.length + '). ' +
+    'Tip: the prompt\'s episode length must match the season — regenerate the names with the correct 15/20-minute setting.');
+  V.nameMap = map;
+  applyNameMap();
+  saveVideo(S.videoId, V);
+  return { applied, total: S.episodes.length, provided: eps.length };
 }
 
 /* ────────────────────────── EPISODE CONTROL ────────────────────────── */
@@ -1696,6 +1800,7 @@ function tick(){
       V.duration = real;
       V.episodes = makeSeasonPlan(real, V.epLen, S.videoId);
       S.episodes = V.episodes;
+      applyNameMap();
       S.current = 0; V.lastEpIndex = 0;
       saveVideo(S.videoId, V);
       Hooks.seasonBuilt();
@@ -1721,7 +1826,7 @@ if (typeof window !== 'undefined'){
 }
 if (typeof module !== 'undefined' && module.exports){
   module.exports = { ACP, splitEpisodes, fmtClock, fmtDur, parseYouTubeId, rankInfo,
-    makeSeasonPlan, pickEpLen, autoEpLen, kanjiNum, RANKS, ACH_DEFS, MISSIONS, BOSSES };
+    makeSeasonPlan, pickEpLen, autoEpLen, kanjiNum, normalizeNames, RANKS, ACH_DEFS, MISSIONS, BOSSES };
 }
 
 </script>
@@ -1988,6 +2093,7 @@ function renderEpisodeList(){
       ? `<span class="ep-resume">resume ${fmtClock(ep.lastPos)}</span>` : '';
     const card = el('div', 'ep-card' + (ep.i === S.current ? ' active' : '') + (ep.watched ? ' watched' : ''));
     card.dataset.i = ep.i;
+    if (ep.summary) card.title = ep.summary;
     card.innerHTML =
       `<div class="ep-num">${String(ep.i+1).padStart(2,'0')}<span>話</span></div>
        <div class="ep-body">
@@ -2009,6 +2115,9 @@ function renderRightPanel(ep){
   if (!ep) return;
   $('#mission-ep').textContent = `EPISODE ${ep.i+1} · ${fmtClock(ep.dur)}`;
   $('#mission-text').textContent = ep.mission;
+  const sum = $('#ep-summary');
+  if (ep.summary){ sum.hidden = false; sum.textContent = '🎯 ' + ep.summary; }
+  else sum.hidden = true;
   $('#boss-prev-emoji').textContent = ep.boss.emoji;
   $('#boss-prev-name').textContent = ep.boss.name;
   $('#boss-prev-desc').textContent = ep.boss.desc;
@@ -2080,6 +2189,9 @@ function onEpisodeStarted(ep, resume){
   $('#intro-num').textContent = `EPISODE ${ep.i+1}`;
   $('#intro-title').textContent = ep.title;
   $('#intro-mission').textContent = `📜 Mission: ${ep.mission}` + (resume > 5 ? ` — resuming at ${fmtClock(resume)}` : '');
+  const isum = $('#intro-summary');
+  if (ep.summary){ isum.hidden = false; isum.textContent = '🎥 ' + ep.summary; }
+  else isum.hidden = true;
   $('#ov-intro').hidden = false;
   overlaySync();
   updateUnderChips();
@@ -2486,6 +2598,145 @@ function openSettings(){
   });
 }
 
+/* ─────────────── AI EPISODE NAMES (optional) ─────────────── */
+function buildPromptText(){
+  const lenMin = (V && V.epLen ? V.epLen : 1200) / 60;
+  const n = (S.episodes && S.episodes.length) || 1;
+  const b1 = fmtClock(lenMin * 60), b2 = fmtClock(lenMin * 120);
+  return `You are the naming department of an anime studio. Turn the lecture transcript below into a season of anime episode titles.
+
+CONTEXT
+- The transcript is from one long recorded class video.
+- An app splits the video into consecutive episodes of ${lenMin} minutes each: episode 1 covers 0:00 to ${b1}, episode 2 covers ${b1} to ${b2}, and so on until the end (${n} episodes total).
+- The transcript may be SRT, VTT, or plain timestamped text, and may be in any language.
+
+TASK
+For each episode's time range, work out what topic is actually taught there, then write:
+- "title": an anime-style episode title with real shonen energy that STILL makes the topic obvious. A student reading it must know what they are about to study. 2 to 7 words.
+- "jp": a short Japanese subtitle (1 to 4 characters, e.g. 積分, 決戦, 覚醒) matching the topic.
+- "summary": one plain sentence (max 90 characters) saying exactly what is covered in that episode.
+
+STYLE RULES
+- Anime flair is encouraged ("Counterattack of the Integral", "The Midnight Formula", "Silent Library, Loud Concepts") but the topic must always be recognizable.
+- Banned: vague filler like "The Journey Continues", "New Challenges", "Part 1".
+- Vary the patterns. Do not start every title with "The".
+- Titles in English regardless of the transcript language. No episode numbers inside titles.
+- If a time range has no clear topic (break, admin, Q&A), name the nearest thing actually happening there.
+
+OUTPUT
+Reply with ONLY valid JSON. No markdown fences, no commentary, nothing before or after:
+{"episodes":[{"ep":1,"title":"...","jp":"...","summary":"..."},{"ep":2,"title":"...","jp":"...","summary":"..."}]}
+One entry per episode, numbered from 1, covering the whole video.
+
+TRANSCRIPT BEGINS
+(paste the subtitles here)
+TRANSCRIPT ENDS`;
+}
+
+function copyText(txt, btn){
+  const done = ok => {
+    if (!btn) return;
+    const o = btn.textContent;
+    btn.textContent = ok ? 'COPIED ✓' : 'SELECT + CTRL+C';
+    setTimeout(() => { btn.textContent = o; }, 1800);
+  };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try{ ok = document.execCommand('copy'); }catch(e){}
+    ta.remove();
+    done(ok);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(() => done(true)).catch(fallback);
+  } else fallback();
+}
+
+function openNames(){
+  const named = !!(V && V.nameMap);
+  openModal(`
+    <div class="modal-head"><div class="modal-title">AI EPISODE NAMES<small>命名 · optional</small></div><button class="modal-close">✕</button></div>
+    <div class="help-p"><b>1.</b> Use your subtitle extension to copy this video's subtitles.<br>
+    <b>2.</b> Copy the prompt below — it already knows this season's episode length.<br>
+    <b>3.</b> Paste the prompt + the subtitles into <b>Gemini, ChatGPT or Claude</b> and send.<br>
+    <b>4.</b> Paste the JSON it replies with below (or upload the file) → titles that match each episode's real topic.</div>
+    <div class="spr-label"><span>THE PROMPT</span><button class="btn btn-ghost small" id="btn-copy-prompt">COPY PROMPT</button></div>
+    <pre class="prompt-box" id="prompt-box">${escapeHtml(buildPromptText())}</pre>
+    <div class="spr-label" style="margin-top:14px"><span>PASTE THE AI'S JSON REPLY</span></div>
+    <textarea class="paste-area" id="names-input" spellcheck="false" placeholder='{"episodes":[{"ep":1,"title":"...","jp":"...","summary":"..."}]}'></textarea>
+    <div class="names-row">
+      <button class="btn btn-primary" id="btn-apply-names">APPLY NAMES ✨</button>
+      <label class="btn btn-ghost">UPLOAD FILE<input type="file" id="names-file" accept=".json,.txt" hidden></label>
+      ${named ? '<button class="btn btn-ghost small" id="btn-restore-names">restore auto names</button>' : ''}
+    </div>
+    <div class="names-status" id="names-status" hidden></div>`);
+  $('#btn-copy-prompt').addEventListener('click', () => copyText(buildPromptText(), $('#btn-copy-prompt')));
+  $('#btn-apply-names').addEventListener('click', applyNamesFromModal);
+  $('#names-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); applyNamesFromModal(); }
+  });
+  $('#names-file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { $('#names-input').value = String(r.result || ''); applyNamesFromModal(); };
+    r.readAsText(f);
+  });
+  const rst = $('#btn-restore-names');
+  if (rst) rst.addEventListener('click', () => {
+    if (!V) return;
+    delete V.nameMap;
+    const fresh = makeSeasonPlan(V.duration, V.epLen, S.videoId);
+    S.episodes.forEach((ep, i) => {
+      const f = fresh[i];
+      if (f){ ep.title = f.title; ep.jp = f.jp; delete ep.summary; }
+    });
+    saveVideo(S.videoId, V);
+    refreshNamesUI();
+    $('#names-status').hidden = false;
+    $('#names-status').className = 'names-status';
+    $('#names-status').textContent = 'Auto-generated names restored.';
+  });
+}
+
+function applyNamesFromModal(){
+  const status = $('#names-status');
+  try{
+    const r = importNames($('#names-input').value);
+    status.hidden = false;
+    status.className = 'names-status ok';
+    status.textContent = `✨ Applied ${r.applied} of ${r.total} episode names.` +
+      (r.applied < r.total ? ` (the other ${r.total - r.applied} keep their auto names)` : '');
+    refreshNamesUI();
+    toast(`✨ ${r.applied} episode names applied`);
+    sfx.xp();
+  }catch(e){
+    status.hidden = false;
+    status.className = 'names-status err';
+    status.textContent = e.message;
+  }
+}
+
+function refreshNamesUI(){
+  const ep = S.episodes[S.current];
+  if (!ep) return;
+  renderEpisodeList();
+  renderRightPanel(ep);
+  updateBanner(ep);
+  updateUnderChips();
+  if (!$('#ov-intro').hidden){
+    $('#intro-title').textContent = ep.title;
+    const isum = $('#intro-summary');
+    if (ep.summary){ isum.hidden = false; isum.textContent = '🎥 ' + ep.summary; }
+    else isum.hidden = true;
+  }
+  if (!$('#ov-clear').hidden) $('#clear-ep').textContent = `EPISODE ${ep.i+1} — ${ep.title}`;
+}
+
 function openHelp(){
   openModal(`
     <div class="modal-head"><div class="modal-title">HELP<small>ヘルプ</small></div><button class="modal-close">✕</button></div>
@@ -2616,6 +2867,7 @@ function wireAll(){
     else { settings.rc = !settings.rc; saveSettings(); applyPanels(); }
   });
   $('#panel-scrim').addEventListener('click', () => { document.body.classList.remove('open-left', 'open-right'); });
+  $('#btn-names').addEventListener('click', openNames);
   $('#modal-root').addEventListener('click', e => { if (e.target.closest('.modal-close')) closeModal(); });
 
   /* home */
@@ -2803,5 +3055,6 @@ if (typeof document !== 'undefined' && document.getElementById('app')){
 }
 
 </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
