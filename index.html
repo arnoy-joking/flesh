@@ -2598,7 +2598,7 @@
     const exp = (c.type === 'mcq' && ans && ans.grade && c.explanation)
       ? `<div class="sq-exp"><b>Why:</b> ${richText(c.explanation)}${visualsFor(c,'expl')}</div>` : '';
     const badge = (ans && ans.grade)
-      ? `<span class="sheet-progress ${ans.grade==='good'?'good':'forgot'}">${ans.grade==='good'?'Correct':'Missed'}</span>` : '';
+      ? `<span class="sheet-progress ${ans.grade==='good'?'good':'hard'}">${ans.grade==='good'?'Correct':'Missed'}</span>` : '';
 
     return `
       <div class="sq-row">
@@ -2614,6 +2614,15 @@
         ${exp}
       </div>`;
   }
+  /* Quiz rows count as real study: the answer is written to the deck's progress
+     (and therefore to the cloud), so mastery, the review-mistakes count and the
+     library ring all reflect it.  Mapping: knew/correct -> good, missed/wrong -> hard. */
+  async function recordSheetQuizGrade(idx, grade){
+    if(!activeDeck) return;
+    progressMap[idx] = grade;
+    await persistProgressAndMastery();
+    await refreshMistakeCount(activeDeck.id, progressMap, activeDeck.cards.length);
+  }
   function bindSheetQuizClicks(rowsEl){
     rowsEl.onclick = (e) => {
       const optBtn = e.target.closest('[data-sq-opt]');
@@ -2621,8 +2630,10 @@
         const parts = optBtn.dataset.sqOpt.split(':');
         const i = parseInt(parts[0],10), oi = parseInt(parts[1],10);
         const card = activeDeck.cards[i];
-        sheetQuiz[i] = { grade: (oi === card.answer) ? 'good' : 'forgot', pick: oi };
+        const right = (oi === card.answer);
+        sheetQuiz[i] = { grade: right ? 'good' : 'hard', pick: oi };
         renderStudySheetRows();
+        recordSheetQuizGrade(i, right ? 'good' : 'hard');
         return;
       }
       const rev = e.target.closest('[data-sq-reveal]');
@@ -2630,8 +2641,11 @@
       const gr = e.target.closest('[data-sq-grade]');
       if(gr){
         const parts = gr.dataset.sqGrade.split(':');
-        sheetQuiz[parseInt(parts[0],10)] = { grade: parts[1] === 'good' ? 'good' : 'forgot', pick:-1 };
+        const i = parseInt(parts[0],10);
+        const grade = parts[1] === 'good' ? 'good' : 'hard';
+        sheetQuiz[i] = { grade: grade, pick:-1 };
         renderStudySheetRows();
+        recordSheetQuizGrade(i, grade);
         return;
       }
     };
@@ -2639,7 +2653,7 @@
   function renderSheetHud(total){
     const vals = Object.keys(sheetQuiz).map(k => sheetQuiz[k]).filter(v => v && v.grade);
     const ok = vals.filter(v => v.grade === 'good').length;
-    const no = vals.filter(v => v.grade === 'forgot').length;
+    const no = vals.filter(v => v.grade !== 'good').length;
     const done = ok + no;
     $('sqOk').textContent = ok;
     $('sqNo').textContent = no;
