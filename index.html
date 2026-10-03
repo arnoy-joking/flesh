@@ -66,6 +66,69 @@
     --shadow-soft: rgba(20,25,35,.12);
   }
 
+
+
+  /* ---------- Nord Frost ----------
+     Dimmed Nord: nord0/1 surfaces instead of the bright frost gradient,
+     with the Frost palette (#8FBCBB / #88C0D0 / #81A1C1 / #5E81AC) as the
+     accent and Aurora colours for grading. Cards are dark panels, not paper. */
+  html[data-theme="nord"]{
+    --ink:#272C36;
+    --ink-soft:#2E3440;        /* nord0 */
+    --ink-softer:#3B4252;      /* nord1 */
+    --ink-line: rgba(136,192,208,.18);
+    --ink-muted:#8D97A8;
+    --ink-bright:#ECEFF4;      /* nord6 */
+    --shadow-strong: rgba(20,24,31,.62);
+    --shadow-soft: rgba(20,24,31,.46);
+
+    /* flashcard surface = dark nord panel */
+    --paper:#3B4252;           /* nord1 */
+    --paper-shadow:#2B313C;
+    --paper-line: rgba(136,192,208,.10);
+    --paper-ink:#ECEFF4;       /* nord6 */
+    --paper-ink-soft:#A8B2C2;
+
+    --emerald:#A3BE8C;         /* aurora green */
+    --emerald-bright:#B9D0A1;
+    --amber:#EBCB8B;           /* aurora yellow */
+    --brick:#BF616A;           /* aurora red */
+    --violet:#B48EAD;          /* aurora purple */
+    --azure:#88C0D0;           /* frost2 */
+    --cyan:#8FBCBB;            /* frost1 */
+    --cyan-bright:#A9D6D5;
+  }
+  html[data-theme="nord"] body{
+    background:
+      radial-gradient(ellipse min(900px,120vw) min(500px,60vw) at 50% -10%, #3B4252 0%, transparent 60%),
+      radial-gradient(760px 460px at 100% 100%, rgba(136,192,208,.10), transparent 62%),
+      #272C36;
+  }
+  /* Nord: card surfaces are dark, so re-tint the light overlays */
+  html[data-theme="nord"] .card-visual,
+  html[data-theme="nord"] .card-svg,
+  html[data-theme="nord"] .chem-compound{ background:rgba(136,192,208,.07); border-color:var(--ink-line); }
+  html[data-theme="nord"] .chem-equation{ background:rgba(136,192,208,.07); border-color:var(--ink-line); }
+  html[data-theme="nord"] .mcq-option{ background:rgba(136,192,208,.06); border-color:var(--ink-line); }
+  html[data-theme="nord"] .mcq-option:hover:not(.locked){ background:rgba(136,192,208,.13); border-color:var(--azure); }
+  html[data-theme="nord"] .mcq-option .tab{ background:#2E3440; color:var(--cyan); }
+  html[data-theme="nord"] .mcq-option.correct{ border-color:var(--emerald); background:rgba(163,190,140,.16); }
+  html[data-theme="nord"] .mcq-option.wrong{ border-color:var(--brick); background:rgba(191,97,106,.15); }
+  html[data-theme="nord"] .mcq-option.correct .tab{ background:var(--emerald); color:#202A1E; }
+  html[data-theme="nord"] .mcq-option.wrong .tab{ background:var(--brick); color:#2B1C1E; }
+  html[data-theme="nord"] .mcq-result-banner.correct-banner{ background:rgba(163,190,140,.15); border-color:rgba(163,190,140,.34); }
+  html[data-theme="nord"] .mcq-result-banner.wrong-banner{ background:rgba(191,97,106,.14); border-color:rgba(191,97,106,.34); }
+  html[data-theme="nord"] .grade-btn.good:hover{ background:rgba(163,190,140,.17); }
+  html[data-theme="nord"] .grade-btn.hard:hover{ background:rgba(235,203,139,.17); }
+  html[data-theme="nord"] .grade-btn.forgot{ color:#D7878F; }
+  html[data-theme="nord"] .grade-btn.forgot:hover{ background:rgba(191,97,106,.17); }
+  html[data-theme="nord"] .btn.primary{ background:var(--azure); border-color:var(--azure); color:#232B33; }
+  html[data-theme="nord"] .btn.primary:hover{ background:var(--cyan); }
+  html[data-theme="nord"] .sheet-option.correct{ border-color:rgba(163,190,140,.5); background:rgba(163,190,140,.13); }
+  html[data-theme="nord"] .sheet-explanation{ background:rgba(136,192,208,.10); border-color:rgba(136,192,208,.32); }
+  html[data-theme="nord"] .sheet-svg{ background:rgba(136,192,208,.05); }
+  html[data-theme="nord"] ::selection{ background:var(--azure); color:#232B33; }
+
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   [hidden]{ display:none !important; }
   html,body{height:100%;}
@@ -191,6 +254,14 @@
     font-family:var(--font-mono); font-size:8px; color:var(--ink-muted);
   }
 
+  .review-chip{
+    display:inline-flex; align-items:center; gap:5px; margin-top:7px;
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:.05em; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; cursor:pointer; align-self:flex-start;
+    background:rgba(201,138,44,.14); border:1px solid rgba(201,138,44,.45); color:var(--amber);
+    transition:background .15s var(--ease), color .15s var(--ease);
+  }
+  .review-chip:hover{ background:var(--amber); color:#1A1408; }
   .deck-card-actions{ display:flex; gap:6px; margin-top:auto; flex-wrap:wrap; }
   .deck-card-actions .btn{ padding:7px 10px; font-size:12px; flex:1; justify-content:center; }
   .deck-card-actions .icon-only{ flex:none; width:34px; padding:7px; }
@@ -224,6 +295,66 @@
   }
   .sheet-search:focus{ outline:none; border-color:var(--amber); }
   .sheet-count{ font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); margin-left:auto; }
+  /* ---------- Quiz rows (interactive rows mode) ---------- */
+  .sq-hud{
+    position:sticky; top:0; z-index:20; margin-bottom:12px; padding:11px 14px;
+    border-radius:14px; background:var(--ink-soft); border:1px solid var(--ink-line);
+    box-shadow:0 14px 30px -20px var(--shadow-strong);
+  }
+  .sq-hud-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:13px; color:var(--ink-muted); }
+  .sq-hud-item{ display:flex; align-items:center; gap:6px; }
+  .sq-hud-item b{ color:var(--ink-bright); font-size:15px; font-weight:700; }
+  .sq-dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex:none; }
+  .sq-dot.ok{ background:var(--emerald-bright); box-shadow:0 0 8px rgba(163,190,140,.5); }
+  .sq-dot.no{ background:var(--brick); box-shadow:0 0 8px rgba(191,97,106,.45); }
+  .sq-reset{
+    margin-left:auto; font:inherit; font-size:12px; font-weight:600; cursor:pointer;
+    background:transparent; color:var(--ink-muted); border:1px solid var(--ink-line);
+    border-radius:9px; padding:6px 12px; transition:.18s var(--ease);
+  }
+  .sq-reset:hover{ border-color:var(--brick); color:var(--brick); }
+  .sq-track{ height:6px; border-radius:99px; background:var(--ink-line); margin-top:10px; overflow:hidden; }
+  .sq-fill{ display:block; height:100%; width:0; border-radius:99px;
+    background:linear-gradient(90deg,var(--emerald),var(--emerald-bright)); transition:width .45s var(--ease); }
+
+  .sq-row{
+    background:var(--ink-soft); border:1px solid var(--ink-line); border-radius:16px;
+    padding:14px 15px; display:flex; flex-direction:column;
+  }
+  .sq-q{ font-size:14px; line-height:1.6; color:var(--ink-bright); margin:8px 0 12px; overflow-wrap:anywhere; }
+  .sq-opts{ display:flex; flex-direction:column; gap:8px; }
+  .sq-opt{
+    display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left; cursor:pointer;
+    padding:10px 12px; border-radius:11px; font:inherit; font-size:13.5px; line-height:1.5;
+    background:transparent; color:var(--ink-bright); border:1.5px solid var(--ink-line);
+    transition:border-color .16s var(--ease), background .16s var(--ease);
+  }
+  .sq-opt:hover:not(.locked){ border-color:var(--azure); background:rgba(136,192,208,.06); }
+  .sq-opt .key{
+    font-family:var(--font-mono); font-weight:700; font-size:11px; min-width:24px; height:24px; border-radius:7px;
+    background:var(--ink-softer); color:var(--ink-muted);
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+  .sq-opt .mark{ margin-left:auto; font-weight:700; opacity:0; transform:scale(.7); transition:.2s var(--ease); flex:none; }
+  .sq-opt.correct{ border-color:var(--emerald); background:rgba(163,190,140,.14); }
+  .sq-opt.correct .key{ background:rgba(163,190,140,.25); color:var(--emerald-bright); }
+  .sq-opt.correct .mark{ opacity:1; transform:scale(1); color:var(--emerald-bright); }
+  .sq-opt.wrong{ border-color:var(--brick); background:rgba(191,97,106,.13); }
+  .sq-opt.wrong .key{ background:rgba(191,97,106,.22); color:var(--brick); }
+  .sq-opt.wrong .mark{ opacity:1; transform:scale(1); color:var(--brick); }
+  .sq-opt.locked{ cursor:default; }
+  .sq-opt.dim{ opacity:.45; }
+  .sq-reveal{ align-self:flex-start; }
+  .sq-answer{
+    margin-top:10px; padding:11px 13px; border-radius:11px; font-size:13.5px; line-height:1.6;
+    border:1px solid rgba(163,190,140,.42); background:rgba(163,190,140,.10); overflow-wrap:anywhere;
+  }
+  .sq-grade{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .sq-grade .btn{ font-size:12px; padding:7px 12px; }
+  .sq-exp{
+    margin-top:10px; padding:10px 12px; border-radius:10px; font-size:12.5px; line-height:1.55;
+    background:rgba(136,192,208,.10); border:1px solid rgba(136,192,208,.30); overflow-wrap:anywhere;
+  }
   .sheet-rows{ display:flex; flex-direction:column; gap:10px; }
   .sheet-row{
     border:1px solid var(--ink-line); border-radius:14px; background:var(--ink-soft); overflow:hidden;
@@ -612,14 +743,19 @@
   .save-dot.flash{ animation:pulseRing 1s ease-out; }
 
   /* Deck card inline quick-menu (expandable row) */
-  .deck-card.menu-open .deck-extra{ display:grid; }
-  .deck-extra{ display:none; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px; }
+  [data-card].menu-open .deck-extra{ display:grid; }
+  /* 2 columns on narrow cards, 4 when the card is wide enough.
+     (4 fixed columns used to clip options off the card.) */
+  .deck-card.menu-open{ overflow:visible; }
+  .deck-extra{ display:none; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px; margin-top:2px; }
+  @media (min-width:520px){ .deck-extra{ grid-template-columns:repeat(4, minmax(0,1fr)); } }
   .deck-extra .btn{
-    font-size:10.5px; padding:6px 8px; min-height:30px; justify-content:center;
+    font-size:10.5px; padding:6px 8px; min-height:34px; justify-content:center;
     font-family:var(--font-mono); letter-spacing:.02em; color:var(--ink-muted);
+    min-width:0; overflow:hidden; text-overflow:ellipsis; gap:5px;
   }
   .deck-extra .btn:hover{ color:var(--ink-bright); }
-  .deck-extra .btn svg{ width:12px; height:12px; }
+  .deck-extra .btn svg{ width:12px; height:12px; flex:none; }
   .deck-extra .btn.danger:hover{ color:#e08787; }
   .menu-toggle.on{ background:var(--ink-softer); color:var(--amber); }
   .badge-play{ position:absolute; right:8px; top:8px; }
@@ -631,6 +767,8 @@
     border-radius:12px; background:var(--ink-soft); transition:border-color .15s var(--ease), transform .15s var(--ease);
   }
   .deck-item:hover{ border-color:rgba(255,255,255,.2); transform:translateX(2px); }
+  .deck-item{ position:relative; }
+  .deck-item .deck-extra{ flex:1 1 100%; }
   .deck-item .fold-ico{ flex:none; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
     background:linear-gradient(135deg,var(--emerald),var(--amber)); color:#0f140f; }
   .deck-item .fold-ico svg{ width:18px; height:18px; }
@@ -782,6 +920,59 @@
     .grade-btn{ min-height:42px; padding:10px 18px; }
   }
 
+  /* =========================================================
+     RESPONSIVE HARDENING
+     Deck cards pack better at mid widths, action buttons wrap
+     instead of squishing, list rows reflow, rows mode drops to
+     one column before text gets cramped.
+  ========================================================= */
+  .deck-grid{ grid-template-columns:repeat(auto-fill, minmax(min(212px,100%),1fr)); gap:12px; }
+  .deck-card h3{ overflow-wrap:anywhere; }
+  .deck-card-actions{ display:flex; flex-wrap:wrap; gap:6px; }
+  .deck-card-actions .btn{ flex:1 1 auto; min-width:64px; padding:7px 8px; font-size:12px; white-space:nowrap; }
+  .deck-card-actions .icon-only{ flex:0 0 auto; width:34px; min-width:34px; padding:7px 0; justify-content:center; }
+  .lib-hero{ grid-template-columns:repeat(auto-fit, minmax(104px,1fr)); }
+  .lib-hero .stat-tile{ min-width:0; padding:10px 8px; }
+  .review-chip{ max-width:100%; }
+
+  /* List rows: the action cluster wraps instead of overflowing */
+  .deck-item{ flex-wrap:wrap; }
+  .deck-item .di-body{ flex:1 1 140px; min-width:0; }
+  .deck-item .di-title{ overflow-wrap:anywhere; }
+  .deck-item .di-sub{ flex-wrap:wrap; }
+  .deck-item .di-right{ flex:0 0 auto; margin-left:auto; flex-wrap:wrap; justify-content:flex-end; }
+
+  /* Rows mode: one column earlier so Q and A never get squeezed */
+  @media (max-width:900px){
+    .sheet-grid{ grid-template-columns:1fr; }
+    .sheet-col.answer{ border-left:none; border-top:1px solid var(--ink-line); }
+  }
+
+  @media (max-width:640px){
+    .sort-badge{ display:none; }
+    .lib-toolbar{ gap:6px; }
+    .sheet-toolbar{ gap:6px; }
+    .sheet-toolbar .seg{ flex:1 1 100%; }
+    .sheet-toolbar .seg button{ flex:1; }
+    .sheet-toolbar .btn{ flex:1; justify-content:center; }
+    .sheet-search{ min-width:0; flex:1 1 100%; }
+    .deck-item .di-right{ flex:1 1 100%; margin-left:0; }
+    .deck-item .di-right .btn{ flex:1 1 auto; }
+    .sq-hud-row{ gap:10px; font-size:12px; }
+    .sq-opt{ padding:9px 10px; font-size:13px; }
+    .modal{ width:min(580px, calc(100vw - 20px)); max-height:92vh; }
+    .modal-body{ padding:12px 13px; }
+    .modal-body textarea{ font-size:11px; }
+  }
+
+  @media (max-width:400px){
+    .deck-grid{ grid-template-columns:1fr; }
+    .deck-card-actions .btn{ flex:1 1 calc(50% - 3px); }
+    .lib-hero{ grid-template-columns:repeat(2,1fr); }
+    .topbar-right .btn{ padding:8px 10px; }
+    .brand h1{ max-width:32vw; }
+  }
+
   @media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; transition-duration:.001ms !important; } }
 </style>
 </head>
@@ -820,9 +1011,22 @@
         <div class="sheet-count" id="sheetCount"></div>
       </div>
       <div class="sheet-toolbar">
+        <div class="seg" id="sheetModeSeg">
+          <button data-sm="read" title="Read every question beside its answer">Read</button>
+          <button data-sm="quiz" title="Answer each row yourself and get instant feedback">Quiz</button>
+        </div>
         <input class="sheet-search" id="sheetSearch" type="search" placeholder="Search questions, answers, tags, options…" autocomplete="off">
         <button class="btn" id="sheetToggleAnswers">Hide answers</button>
         <button class="btn primary" id="sheetStartCards">Start flashcards</button>
+      </div>
+      <div class="sq-hud" id="sqHud" hidden>
+        <div class="sq-hud-row">
+          <span class="sq-hud-item"><i class="sq-dot ok"></i><b id="sqOk">0</b>&nbsp;correct</span>
+          <span class="sq-hud-item"><i class="sq-dot no"></i><b id="sqNo">0</b>&nbsp;wrong</span>
+          <span class="sq-hud-item"><b id="sqDone">0</b>&nbsp;/&nbsp;<span id="sqTotal">0</span>&nbsp;answered</span>
+          <button class="sq-reset" id="sqReset" title="Clear every answer and start over">Reset</button>
+        </div>
+        <div class="sq-track"><i class="sq-fill" id="sqFill"></i></div>
       </div>
       <div class="sheet-rows" id="sheetRows"></div>
     </div>
@@ -1321,6 +1525,10 @@
      VISUALS: canvas function plot + Chart.js data chart
   ============================================================ */
   function isLightTheme(){ return document.documentElement.getAttribute('data-theme') === 'light'; }
+  function isNordTheme(){ return document.documentElement.getAttribute('data-theme') === 'nord'; }
+  /* three themes: dark -> light -> nord frost -> dark */
+  function nextTheme(){ return theme === 'dark' ? 'light' : (theme === 'light' ? 'nord' : 'dark'); }
+  function themeLabel(t){ return t === 'light' ? 'Light' : (t === 'nord' ? 'Nord Frost' : 'Dark'); }
 
   function renderPlot(canvas, spec, _retries){
     if(!canvas) return;
@@ -1341,9 +1549,10 @@
     ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr);
     ctx.clearRect(0,0,cssW,cssH);
     const light = isLightTheme();
-    const axisColor = light ? '#8b93a3' : '#5a6272';
-    const gridColor = light ? 'rgba(20,25,35,0.1)' : 'rgba(255,255,255,0.09)';
-    const curveColor = '#C98A2C';
+    const nord = isNordTheme();
+    const axisColor = light ? '#8b93a3' : (nord ? '#8D97A8' : '#5a6272');
+    const gridColor = light ? 'rgba(20,25,35,0.1)' : (nord ? 'rgba(136,192,208,0.13)' : 'rgba(255,255,255,0.09)');
+    const curveColor = nord ? '#88C0D0' : '#C98A2C';
     let fn;
     try{ fn = compileExpr(spec.expr); }
     catch(e){ ctx.fillStyle = axisColor; ctx.font = '11px monospace'; ctx.fillText('Invalid expression: '+spec.expr, 8, 18); return; }
@@ -1398,9 +1607,12 @@
     }
     canvas._chartRetries = 0;
     const light = isLightTheme();
-    const gridColor = light ? 'rgba(20,25,35,0.1)' : 'rgba(255,255,255,0.09)';
-    const textColor = light ? '#5B6270' : '#8A93A3';
-    const palette = ['#2F6F52','#C98A2C','#B24C4C','#5B5A9C','#3D7EA6'];
+    const nord2 = isNordTheme();
+    const gridColor = light ? 'rgba(20,25,35,0.1)' : (nord2 ? 'rgba(136,192,208,0.13)' : 'rgba(255,255,255,0.09)');
+    const textColor = light ? '#5B6270' : (nord2 ? '#8D97A8' : '#8A93A3');
+    const palette = nord2
+      ? ['#88C0D0','#8FBCBB','#A3BE8C','#EBCB8B','#B48EAD']
+      : ['#2F6F52','#C98A2C','#B24C4C','#5B5A9C','#3D7EA6'];
     const datasets = (spec.series||[]).map((s,i)=>({
       label: s.name || ('Series '+(i+1)), data: s.data,
       borderColor: palette[i%palette.length],
@@ -1620,6 +1832,8 @@
   let session = null;      // shared study/quiz session
   let currentVisual = null; // {type:'plot'|'chart', spec, canvas}
   let sheetAnswersVisible = true;
+  let sheetMode = 'read';      // 'read' | 'quiz'
+  let sheetQuiz = {};          // idx -> { grade:'good'|'forgot'|null, pick:number }
   let pendingDeleteId = null;
   let pendingResume = null;   // {deckId, kind} awaiting Continue/Restart
   // library browser state
@@ -1637,11 +1851,15 @@
   function themeToggleHTML(){
     const sun = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
     const moon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
-    return `<button class="icon-btn" id="themeToggle" title="Toggle theme">${theme==='dark' ? sun : moon}</button>`;
+    const nord = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l2.3 5.6 6 .5-4.6 4 1.4 5.9L12 15.3 6.9 18.5l1.4-5.9-4.6-4 6-.5z"/></svg>`;
+    const icon = theme === 'light' ? moon : (theme === 'nord' ? nord : sun);
+    return `<button class="icon-btn" id="themeToggle" title="Theme: ${themeLabel(theme)} — tap for ${themeLabel(nextTheme())}">${icon}</button>`;
   }
   async function applyTheme(t){
     theme = t;
     document.documentElement.setAttribute('data-theme', theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', theme === 'light' ? '#E7E9EE' : (theme === 'nord' ? '#2E3440' : '#161A20'));
     await sSet('settings:theme', theme);
     if(currentVisual) redrawCurrentVisual();
     renderTopbarRightIcons();
@@ -1650,7 +1868,7 @@
     const el = $('themeToggle');
     if(el) el.outerHTML = themeToggleHTML();
     const t = $('themeToggle');
-    if(t) t.addEventListener('click', () => applyTheme(theme==='dark' ? 'light' : 'dark'));
+    if(t) t.addEventListener('click', () => applyTheme(nextTheme()));
   }
   function redrawCurrentVisual(){
     if(!currentVisual || !currentVisual.canvas || !document.body.contains(currentVisual.canvas)) return;
@@ -1715,7 +1933,7 @@
 
     backBtn.onclick = goLibrary;
     const t = $('themeToggle');
-    if(t) t.addEventListener('click', () => applyTheme(theme==='dark' ? 'light' : 'dark'));
+    if(t) t.addEventListener('click', () => applyTheme(nextTheme()));
     const newDeckBtn = $('newDeckBtn');
     if(newDeckBtn) newDeckBtn.addEventListener('click', openImportModal);
     const backupBtn = $('backupBtn');
@@ -1861,6 +2079,7 @@
             <h3>${escapeHtml(d.title)}</h3>
             <div class="deck-meta" style="margin-top:6px"><span class="deck-folder-chip">${escapeHtml(folderOf(d)||'Unsorted')}</span><span class="mdot"></span><span>${d.count} card${d.count===1?'':'s'}</span></div>
             <div class="deck-meta" style="margin-top:5px"><span class="${d.lastStudied?'recent':''}">${when}</span></div>
+            ${d.mistakeCount ? `<button class="review-chip" data-review="${d.id}" title="Study only the cards you got wrong">⟲ ${d.mistakeCount} to review</button>` : ''}
           </div>
           <div class="ring" style="--pct:${pct}" data-pct="${pct}%" title="${pct}% mastered"></div>
         </div>
@@ -1873,13 +2092,18 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
           </button>
         </div>
+        ${deckExtraHTML(d)}
+      </div>`;
+  }
+  const MENU_DOTS = `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>`;
+  function deckExtraHTML(d){
+    return `
         <div class="deck-extra" data-extra="${d.id}">
           <button class="btn" data-dup="${d.id}" title="Duplicate this deck (fresh progress)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Duplicate</button>
           <button class="btn" data-rename="${d.id}" title="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>Rename</button>
           <button class="btn" data-export="${d.id}" title="Export as JSON"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</button>
           <button class="btn danger" data-delete="${d.id}" title="Delete deck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete</button>
-        </div>
-      </div>`;
+        </div>`;
   }
   function listRowHTML(d){
     const [ca,cb]=hueFor(d.id); const pct=Math.round(d.masteryPct||0);
@@ -1896,7 +2120,10 @@
           <div class="ring" style="--pct:${pct};width:32px;height:32px;--pct:${pct}" data-pct="${pct}%"></div>
           <button class="btn primary" data-study="${d.id}" style="min-height:34px">Study</button>
           <button class="btn" data-quiz="${d.id}" style="min-height:34px">Quiz</button>
+          ${d.mistakeCount ? `<button class="btn" data-review="${d.id}" style="min-height:34px" title="Study only the cards you got wrong">Review ${d.mistakeCount}</button>` : ''}
+          <button class="btn icon-only menu-toggle" data-more="${d.id}" title="More actions">${MENU_DOTS}</button>
         </div>
+        ${deckExtraHTML(d)}
       </div>`;
   }
   function emptyLibraryHTML(){
@@ -1979,6 +2206,7 @@
       const id=d.id;
       const bind=(sel,fn)=>{ const el=wrap.querySelector(`[data-${sel}="${id}"]`); if(el) el.addEventListener('click', (ev)=>{ if(ev&&ev.stopPropagation) ev.stopPropagation(); fn(); }); };
       bind('study', ()=> requestSessionStart(id,'study'));
+      bind('review', ()=> requestReview(id));
       bind('quiz', ()=> requestSessionStart(id,'quiz'));
       bind('sheet', ()=> openDeck(id,'sheet'));
       bind('export', ()=> exportDeck(id));
@@ -2095,7 +2323,8 @@
     await sSet('deck:'+id, JSON.stringify(deckObj));
     await sSet('progress:'+id, JSON.stringify({ grades:{}, updatedAt: now }));
     library.push({ id, title: deckObj.title, folder: deckObj.folder, count: deckObj.cards.length,
-      createdAt: now, updatedAt: now, lastStudied: null, masteryPct: 0, mcq: st.mcq, basic: st.basic, newCount: deckObj.cards.length });
+      createdAt: now, updatedAt: now, lastStudied: null, masteryPct: 0, mcq: st.mcq, basic: st.basic,
+      newCount: deckObj.cards.length, mistakeCount: 0 });
     await saveLibraryIndex();
     return id;
   }
@@ -2106,6 +2335,37 @@
     showToast('Sample deck added to your library');
   }
 
+  /* ---------- Review mistakes ----------
+     Any card ever graded hard / forgot / skipped counts as a mistake.
+     The count is cached on the library entry so the deck card can offer
+     "Review N" without loading every deck's progress. */
+  function mistakeIndicesFor(cardsCount, prog){
+    const out = [];
+    for(let i=0;i<cardsCount;i++){ const g = prog[i]; if(g && g !== 'good') out.push(i); }
+    return out;
+  }
+  async function refreshMistakeCount(deckId, prog, cardsCount){
+    const entry = library.find(d => d.id === deckId);
+    if(!entry) return;
+    const n = mistakeIndicesFor(cardsCount, prog).length;
+    if(entry.mistakeCount === n) return;   // unchanged -> no write, no sync
+    entry.mistakeCount = n;
+    await saveLibraryIndex();
+  }
+  async function requestReview(id){
+    const raw = await sGet('deck:'+id);
+    if(!raw){ showToast('Could not load that deck.'); return; }
+    activeDeck = JSON.parse(raw);
+    const praw = await sGet('progress:'+id);
+    let prog = { grades:{} };
+    try{ prog = praw ? JSON.parse(praw) : { grades:{} }; }catch(e){}
+    progressMap = prog.grades || {};
+    const idx = mistakeIndicesFor(activeDeck.cards.length, progressMap);
+    if(!idx.length){ showToast('No mistakes to review in this deck — nice!'); return; }
+    startStudySession(shuffleArray(idx), 'review');
+    showToast('Reviewing ' + idx.length + ' card' + (idx.length===1?'':'s') + ' you missed');
+  }
+
   async function openDeck(id, mode){
     const raw = await sGet('deck:'+id);
     if(!raw){ showToast('Could not load that deck.'); return; }
@@ -2114,6 +2374,7 @@
     let prog = { grades:{} };
     try{ prog = praw ? JSON.parse(praw) : { grades:{} }; }catch(e){}
     progressMap = prog.grades || {};
+    await refreshMistakeCount(id, progressMap, activeDeck.cards.length);
     const allIdx = activeDeck.cards.map((_,i)=>i);
     if(mode === 'quiz') startQuizSession(allIdx);
     else if(mode === 'sheet') startStudySheet();
@@ -2129,6 +2390,7 @@
     const entry = library.find(d => d.id === activeDeck.id);
     if(entry){
       entry.masteryPct = pct;
+      entry.mistakeCount = mistakeIndicesFor(total, progressMap).length;
       entry.lastStudied = _now;
       entry.updatedAt = _now;
       await saveLibraryIndex();
@@ -2242,6 +2504,7 @@
     session = null;
     currentVisual = null;
     sheetAnswersVisible = true;
+    sheetQuiz = {};
     setView('sheet');
     renderTopbar();
     renderStudySheet();
@@ -2249,7 +2512,18 @@
   function renderStudySheet(){
     if(!activeDeck) return;
     $('sheetTitle').textContent = activeDeck.title;
-    $('sheetMeta').textContent = 'Fast preview mode: every question sits beside its answer, with MCQ choices, explanations, tags, and progress labels.';
+    $('sheetMeta').textContent = sheetMode === 'quiz'
+      ? 'Quiz rows: answer every question yourself. Tap an option for instant feedback, or reveal a written answer and score yourself.'
+      : 'Fast preview mode: every question sits beside its answer, with MCQ choices, explanations, tags, and progress labels.';
+    const seg = $('sheetModeSeg');
+    if(seg){
+      seg.querySelectorAll('button[data-sm]').forEach(b => {
+        b.classList.toggle('on', b.dataset.sm === sheetMode);
+        b.onclick = () => { sheetMode = b.dataset.sm; renderStudySheet(); };
+      });
+    }
+    const resetBtn = $('sqReset');
+    if(resetBtn) resetBtn.onclick = () => { sheetQuiz = {}; renderStudySheetRows(); };
     const search = $('sheetSearch');
     const toggle = $('sheetToggleAnswers');
     const start = $('sheetStartCards');
@@ -2268,12 +2542,110 @@
       .map((c,idx) => ({c,idx}))
       .filter(({c}) => !q || cardSearchText(c).includes(q));
     $('sheetCount').textContent = `${filtered.length}/${activeDeck.cards.length} row${filtered.length===1?'':'s'}`;
+    const isQuiz = sheetMode === 'quiz';
+    $('sheetToggleAnswers').hidden = isQuiz;
+    $('sqHud').hidden = !isQuiz;
     $('sheetToggleAnswers').textContent = sheetAnswersVisible ? 'Hide answers' : 'Show answers';
-    rowsEl.classList.toggle('answers-hidden', !sheetAnswersVisible);
+    rowsEl.classList.toggle('answers-hidden', !isQuiz && !sheetAnswersVisible);
     rowsEl.innerHTML = filtered.length
-      ? filtered.map(({c,idx}) => sheetRowHTML(c, idx)).join('')
+      ? filtered.map(({c,idx}) => isQuiz ? sheetQuizRowHTML(c, idx) : sheetRowHTML(c, idx)).join('')
       : `<div class="sheet-empty">No rows match that search.</div>`;
     renderMath(rowsEl);
+    mountVisualsIn(rowsEl);
+    if(isQuiz){ bindSheetQuizClicks(rowsEl); renderSheetHud(filtered.length); }
+    else rowsEl.onclick = null;
+  }
+
+  /* ---- quiz rows: interactive answering inside Rows mode ---- */
+  function sheetQuizRowHTML(c, idx){
+    const letters = ['A','B','C','D','E','F'];
+    const tag = c.tag ? `<span class="sheet-chip" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '';
+    const ans = sheetQuiz[idx];
+    const pick = (ans && typeof ans.pick === 'number') ? ans.pick : -1;
+    const legacyVis = svgHtml(c.svg) + visualHtml(c.chart || c.plot);
+    const qVisuals = (c.type === 'mcq')
+      ? (visualsFor(c,'question') || legacyVis)
+      : (visualsFor(c,'front')   || legacyVis);
+    const qText = c.type === 'mcq' ? c.question : c.front;
+
+    let control = '';
+    if(c.type === 'mcq'){
+      const opts = (c.options||[]).map((opt,i) => {
+        const isCorrect = (i === c.answer);
+        let cls = 'sq-opt';
+        if(ans && ans.grade){
+          if(isCorrect) cls += ' correct';
+          else if(i === pick) cls += ' wrong';
+          else cls += ' dim';
+        }
+        return `<button class="${cls}${ans && ans.grade ? ' locked' : ''}" data-sq-opt="${idx}:${i}"${ans && ans.grade ? ' disabled' : ''}>
+          <span class="key">${letters[i] || (i+1)}</span>
+          <span class="opt-body">${richText(optionText(opt))}${optionVisuals(c,i,opt)}</span>
+          <span class="mark">${isCorrect ? '&#10003;' : '&#10007;'}</span>
+        </button>`;
+      }).join('');
+      control = `<div class="sq-opts">${opts}</div>`;
+    } else if(ans){
+      control = `<div class="sq-answer"><b>Answer:</b> ${richText(c.back)}${visualsFor(c,'back')}</div>
+        <div class="sq-grade">
+          <button class="btn" data-sq-grade="${idx}:good">&#10003; I knew it</button>
+          <button class="btn" data-sq-grade="${idx}:forgot">&#10007; I missed it</button>
+        </div>`;
+    } else {
+      control = `<button class="btn primary sq-reveal" data-sq-reveal="${idx}">Reveal answer</button>`;
+    }
+
+    const exp = (c.type === 'mcq' && ans && ans.grade && c.explanation)
+      ? `<div class="sq-exp"><b>Why:</b> ${richText(c.explanation)}${visualsFor(c,'expl')}</div>` : '';
+    const badge = (ans && ans.grade)
+      ? `<span class="sheet-progress ${ans.grade==='good'?'good':'forgot'}">${ans.grade==='good'?'Correct':'Missed'}</span>` : '';
+
+    return `
+      <div class="sq-row">
+        <div class="sheet-row-top">
+          <span class="sheet-num">#${String(idx+1).padStart(2,'0')}</span>
+          ${tag}
+          <span class="sheet-type">${c.type === 'mcq' ? 'MCQ' : 'Basic'}</span>
+          ${badge}
+        </div>
+        <div class="sq-q">${richText(qText)}</div>
+        ${qVisuals}
+        ${control}
+        ${exp}
+      </div>`;
+  }
+  function bindSheetQuizClicks(rowsEl){
+    rowsEl.onclick = (e) => {
+      const optBtn = e.target.closest('[data-sq-opt]');
+      if(optBtn && !optBtn.disabled){
+        const parts = optBtn.dataset.sqOpt.split(':');
+        const i = parseInt(parts[0],10), oi = parseInt(parts[1],10);
+        const card = activeDeck.cards[i];
+        sheetQuiz[i] = { grade: (oi === card.answer) ? 'good' : 'forgot', pick: oi };
+        renderStudySheetRows();
+        return;
+      }
+      const rev = e.target.closest('[data-sq-reveal]');
+      if(rev){ sheetQuiz[parseInt(rev.dataset.sqReveal,10)] = { grade:null, pick:-1 }; renderStudySheetRows(); return; }
+      const gr = e.target.closest('[data-sq-grade]');
+      if(gr){
+        const parts = gr.dataset.sqGrade.split(':');
+        sheetQuiz[parseInt(parts[0],10)] = { grade: parts[1] === 'good' ? 'good' : 'forgot', pick:-1 };
+        renderStudySheetRows();
+        return;
+      }
+    };
+  }
+  function renderSheetHud(total){
+    const vals = Object.keys(sheetQuiz).map(k => sheetQuiz[k]).filter(v => v && v.grade);
+    const ok = vals.filter(v => v.grade === 'good').length;
+    const no = vals.filter(v => v.grade === 'forgot').length;
+    const done = ok + no;
+    $('sqOk').textContent = ok;
+    $('sqNo').textContent = no;
+    $('sqDone').textContent = done;
+    $('sqTotal').textContent = total;
+    $('sqFill').style.width = total ? ((done/total)*100) + '%' : '0%';
   }
 
   /* ============================================================
@@ -2797,8 +3169,8 @@
     const reviewSet = session.order.filter(idx => session.grades[idx] !== 'good');
 
     $('summaryContent').innerHTML = `
-      <div class="eyebrow">Round complete</div>
-      <h2>${good === session.order.length ? 'Perfect round' : 'Nice work'}</h2>
+      <div class="eyebrow">${session.mode==='review' ? 'Review round complete' : 'Round complete'}</div>
+      <h2>${good === session.order.length ? 'Perfect round' : (reviewSet.length ? 'Keep going' : 'Nice work')}</h2>
       <div class="lead">You went through ${session.order.length} card${session.order.length===1?'':'s'} in ${escapeHtml(activeDeck.title)}.</div>
       <div class="chip-row">
         <div class="chip good"><b>${good}</b><span>Good</span></div>
@@ -2806,7 +3178,7 @@
         <div class="chip forgot"><b>${forgot}</b><span>Forgot</span></div>
       </div>
       <div class="summary-actions">
-        ${reviewSet.length ? `<button class="btn primary" id="reviewBtn">Review Hard &amp; Forgot (${reviewSet.length})</button>` : ''}
+        ${reviewSet.length ? `<button class="btn primary" id="reviewBtn">${session.mode==='review' ? 'Review remaining' : 'Review Hard &amp; Forgot'} (${reviewSet.length})</button>` : ''}
         <button class="btn" id="restartBtn">Study full deck again</button>
         <button class="btn ghost" id="libBtn">Back to library</button>
       </div>
@@ -2839,7 +3211,7 @@
       <div class="lead">${pct}% score · finished in ${mm}m ${ss}s</div>
       ${missedHTML}
       <div class="summary-actions">
-        ${missed.length ? `<button class="btn primary" id="studyMissedBtn">Study missed cards</button>` : ''}
+        ${missed.length ? `<button class="btn primary" id="studyMissedBtn">Review missed cards (${missed.length})</button>` : ''}
         <button class="btn" id="retakeBtn">Retake quiz</button>
         <button class="btn ghost" id="libBtn">Back to library</button>
       </div>
@@ -3423,10 +3795,12 @@
   ============================================================ */
   async function init(){
     const savedTheme = await sGet('settings:theme');
-    theme = savedTheme === 'light' ? 'light' : 'dark';
+    theme = (savedTheme === 'light' || savedTheme === 'nord') ? savedTheme : 'dark';
     const lv = await sGet('settings:libView');
     if(lv === 'list' || lv === 'compact' || lv === 'grid') libView = lv;
     document.documentElement.setAttribute('data-theme', theme);
+    const bootMeta = document.querySelector('meta[name="theme-color"]');
+    if(bootMeta) bootMeta.setAttribute('content', theme === 'light' ? '#E7E9EE' : (theme === 'nord' ? '#2E3440' : '#161A20'));
     setView('library');
     registerSW();
     wireSyncUI();
@@ -3445,5 +3819,5 @@
 
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3af0e46391eaab8',t:'MTc4OTM4NTM4NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
