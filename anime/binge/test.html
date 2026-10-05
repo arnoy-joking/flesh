@@ -384,7 +384,7 @@ body.closed-right #panel-right{width:0}
   animation:blink 1.6s infinite}
 
 /* pause */
-#ov-pause{background:rgba(5,7,15,.82);backdrop-filter:blur(10px);cursor:pointer}
+#ov-pause{background:radial-gradient(430px 240px at 50% 50%,rgba(5,7,15,.6),rgba(5,7,15,.18) 62%,transparent 78%);cursor:pointer}
 .pause-inner{display:flex;flex-direction:column;align-items:center;gap:16px;animation:cardIn .3s both}
 .bigplay{
   width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:38px;color:#fff;
@@ -684,10 +684,6 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
 .names-status.ok{color:var(--win);background:rgba(62,230,139,.08);border:1px solid rgba(62,230,139,.35)}
 .names-status.err{color:#ffb3c0;background:rgba(200,30,78,.1);border:1px solid rgba(255,90,90,.4)}
 .intro-summary{margin-top:10px;font-size:12px;color:var(--cyan);opacity:.9;max-width:560px}
-
-/* ── REAL-TIME (SPEED-ADJUSTED) READOUT ────────── */
-.t-real{margin-left:10px;color:var(--cyan);font-size:11px;letter-spacing:.02em}
-.t-real::before{content:"⏱";margin-right:4px;font-size:10px}
 .sp-note{padding:7px 12px 5px;font-size:10.5px;color:var(--dim);font-family:var(--mono);
   text-align:center;border-top:1px solid var(--line)}
 
@@ -946,7 +942,7 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
             </div>
             <div class="seek-tip" id="seek-tip" hidden>00:00</div>
           </div>
-          <div class="c-time"><span id="time-cur">00:00</span><span class="t-sep">/</span><span id="time-dur">20:00</span><span class="t-real" id="time-real" hidden></span></div>
+          <div class="c-time"><span id="time-cur">00:00</span><span class="t-sep">/</span><span id="time-dur">20:00</span></div>
           <div class="c-right">
             <div class="pop-wrap">
               <button class="cbtn" id="btn-speed" title="Playback speed"><span id="speed-label">1×</span></button>
@@ -1243,7 +1239,7 @@ function normalizeNames(data){
 
 /* ────────────────────────── STATE ────────────────────────── */
 
-const DEFAULT_SETTINGS = { eplen:'auto', autonext:true, sfx:true, crystal:true, guard:true, cc:false, vol:85, rate:1, lc:false, rc:false };
+const DEFAULT_SETTINGS = { eplen:'auto', autonext:true, sfx:true, crystal:true, guard:true, cc:false, vol:85, rate:1, lc:false, rc:false, speedClock:false };
 let settings = { ...DEFAULT_SETTINGS };
 
 const K_SET = 'ACP.set', K_G = 'ACP.g';
@@ -1811,6 +1807,7 @@ function tick(){
       S.current = 0; V.lastEpIndex = 0;
       saveVideo(S.videoId, V);
       Hooks.seasonBuilt();
+      return; // the local `ep` is stale after the rebuild — let the next tick repaint
     }
   }
 
@@ -2141,15 +2138,14 @@ function updateSeekUI(rel, ep){
   const pct = clamp(rel/ep.dur*100, 0, 100);
   $('#seek-fill').style.width = pct + '%';
   $('#seek-handle').style.left = pct + '%';
-  $('#time-cur').textContent = fmtClock(rel);
-  const tr = $('#time-real');
-  if (tr){
-    const rate = +(settings.rate || 1);
-    if (rate > 0 && rate !== 1){
-      tr.hidden = false;
-      tr.textContent = `${fmtClock(Math.max(0, ep.dur - rel) / rate)} left at ${rate}×`;
-    } else tr.hidden = true;
-  }
+  const dr = dispRate();
+  $('#time-cur').textContent = fmtClock(rel / dr);
+  $('#time-dur').textContent = fmtClock(ep.dur / dr);
+}
+/* display rate: 1 unless the speed-based clock is on and speed differs */
+function dispRate(){
+  const r = +(settings.rate || 1);
+  return (!!settings.speedClock && r > 0 && r !== 1) ? r : 1;
 }
 
 function updateBuffer(){
@@ -2569,6 +2565,10 @@ function openSettings(){
       <select id="set-eplen"><option value="auto">Auto</option><option value="15">15 min</option><option value="20">20 min</option></select>
     </div>
     <div class="setting-row">
+      <div><div class="sr-label">Speed-based clock</div><div class="sr-desc">Divide the episode clock and seek times by your playback speed — at 2× a 20:00 episode reads 10:00. Off = real content time.</div></div>
+      <label class="switch"><input type="checkbox" id="set-speedclock"><i></i></label>
+    </div>
+    <div class="setting-row">
       <div><div class="sr-label">Auto-play next episode</div><div class="sr-desc">When the 2-minute break ends, the next episode starts after a 5-second countdown (any click cancels it).</div></div>
       <label class="switch"><input type="checkbox" id="set-autonext"><i></i></label>
     </div>
@@ -2590,11 +2590,13 @@ function openSettings(){
       <button class="btn btn-ghost small" id="btn-reset-data">RESET ALL DATA</button>
     </div>`);
   $('#set-eplen').value = settings.eplen;
+  $('#set-speedclock').checked = !!settings.speedClock;
   $('#set-autonext').checked = !!settings.autonext;
   $('#set-sfx').checked = !!settings.sfx;
   $('#set-crystal').checked = !!settings.crystal;
   $('#set-guard').checked = !!settings.guard;
   $('#set-eplen').addEventListener('change', e => { settings.eplen = e.target.value; saveSettings(); });
+  $('#set-speedclock').addEventListener('change', e => { settings.speedClock = e.target.checked; saveSettings(); });
   $('#set-autonext').addEventListener('change', e => { settings.autonext = e.target.checked; saveSettings(); });
   $('#set-sfx').addEventListener('change', e => { settings.sfx = e.target.checked; saveSettings(); });
   $('#set-crystal').addEventListener('change', e => { settings.crystal = e.target.checked; saveSettings(); if (!settings.crystal) crystalReset(); });
@@ -2971,7 +2973,7 @@ function wireAll(){
     const tip = $('#seek-tip');
     tip.hidden = false;
     tip.style.left = (f * 100) + '%';
-    tip.textContent = fmtClock(f * ep.dur);
+    tip.textContent = fmtClock(f * ep.dur / dispRate());
   };
   seek.addEventListener('pointerenter', e => { if (!seekDragging) showTip(e); });
   seek.addEventListener('pointerleave', () => { if (!seekDragging) $('#seek-tip').hidden = true; });
@@ -3083,5 +3085,5 @@ if (typeof document !== 'undefined' && document.getElementById('app')){
 }
 
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a45dd24c2b8ab8f9',t:'MTc5MTIxNzkzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
