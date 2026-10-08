@@ -1,96 +1,134 @@
-/* Flësh Service Worker — offline support done the *safe* way.
+/* ============================================================
+   Flësh — service worker
+   ------------------------------------------------------------
+   Caching policy, per resource type:
 
-   Key rule: the APP SHELL (index.html / navigation) is NETWORK-FIRST.
-   That means whenever the device is online it always fetches the newest
-   code from the server, so bug fixes and updates actually reach users.
-   Only the immutable static assets (fonts, KaTeX, Chart.js) are cache-first,
-   because those never change and are what let the app render offline.
+     app shell (any .html navigation)   network-first
+       Online: always the newest index.html, so a deploy reaches users on
+       their very next load. Offline: the last good copy, so the app opens.
 
-   Supabase API calls are never intercepted here — they go straight to the
-   network so auth/sync always behave normally. */
+     static assets (fonts, KaTeX, Chart.js, icons, css, js)
+                                        cache-first + background refresh
+       Fast and fully offline. A changed file is picked up on the next load.
 
-const CACHE = 'flesh-v3';        // bump this whenever caching behavior changes
-const IMMUTABLE_CACHE = 'flesh-assets-v3';
+     Supabase / any cross-origin request   never intercepted
+       Auth and sync always talk straight to the network.
 
-const PRECACHE_SHELL = ['./index.html'];
-// Assets are cached lazily on first fetch; this just warms the most important.
-const PRECACHE_WARM = [
-  './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
-];
+   ONE knob to remember:
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(IMMUTABLE_CACHE).then((c) =>
-      c.addAll([...PRECACHE_SHELL, ...PRECACHE_WARM]).catch(() => {})
-    ).then(() => self.skipWaiting())
+     VERSION (below)
+
+   Bump it and the next activate() deletes every old Flësh cache. That is what
+   makes a deploy land. The previous version of this file could not do that:
+   its activate() kept a hardcoded allowlist of old cache names
+   ('flesh-assets-v2', 'flesh-v3'), and caches.match() returns the OLDEST
+   matching cache first — so bumping the version wrote fresh copies nobody
+   ever read, and stale assets were served forever. There is no allowlist now.
+   ============================================================ */
+
+const VERSION = 'v4';                       // <-- bump on every deploy
+const PREFIX = 'flesh-';
+const SHELL_CACHE = `${PREFIX}shell-${VERSION}`;
+const ASSET_CACHE = `${PREFIX}assets-${VERSION}`;
+const KEEP = [SHELL_CACHE, ASSET_CACHE];    // everything else gets deleted
+
+/* Precached at install so the app can open with no network at all.
+   Anything beyond this is cached lazily on first use. */
+const PRECACHE_SHELL = ['./', './index.html', './manifest.webmanifest'];
+const PRECACHE_ASSETS = ['./icons/icon-192.png', './icons/icon-512.png'];
+
+/* ---------- install ---------- */
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    Promise.all([
+      caches.open(SHELL_CACHE)
+        // one bad URL must not abort the whole install
+        .then((cache) => Promise.all(PRECACHE_SHELL.map((u) => cache.add(u).catch(() => {})))),
+      caches.open(ASSET_CACHE)
+        .then((cache) => Promise.all(PRECACHE_ASSETS.map((u) => cache.add(u).catch(() => {}))))
+    ])
+      .then(() => self.skipWaiting())       // let the new worker take over at once
   );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== IMMUTABLE_CACHE && k !== 'flesh-assets-v2' && k !== CACHE)
-          .map((k) => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+/* ---------- activate ---------- */
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      // No allowlist: any cache we do not own right now is stale and goes.
+      .then((keys) => Promise.all(keys.filter((k) => !KEEP.includes(k)).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())     // control any tab that is already open
   );
 });
 
-function isAsset(url) {
-  return /\.(woff2?|ttf|js|css|png|webp|svg)$/i.test(url.pathname);
+/* ---------- routing helpers ---------- */
+function isShellRequest(url, request) {
+  return request.mode === 'navigate' || /\.html?$/i.test(url.pathname) || url.pathname === '/';
 }
-function isShell(url) {
-  // navigation to the root or index.html = the app shell
-  return url.pathname === '/' || /\/index\.html$/i.test(url.pathname) ||
-         /\.html$/i.test(url.pathname);
+function isStaticAsset(url) {
+  return /\.(woff2?|ttf|otf|eot|js|mjs|css|png|jpe?g|gif|webp|avif|svg|ico|json|map)$/i
+    .test(url.pathname);
+}
+/* Only store real, complete, same-origin successes. Caching a redirect, an
+   error page or an opaque response is how a broken build gets frozen offline. */
+function worthCaching(response) {
+  return !!response && response.ok && response.type === 'basic';
+}
+function put(cacheName, request, response) {
+  if (!worthCaching(response)) return Promise.resolve();
+  const copy = response.clone();
+  return caches.open(cacheName).then((c) => c.put(request, copy)).catch(() => {});
 }
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
+/* ---------- fetch ---------- */
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
 
-  const url = new URL(req.url);
-  // Never interfere with Supabase / any cross-origin API.
-  if (url.origin.includes('supabase.co')) return;
+  const url = new URL(request.url);
 
-  if (url.origin === self.location.origin) {
-    if (isShell(url)) {
-      // NETWORK-FIRST for the shell: always get the latest app code online.
-      e.respondWith(
-        fetch(req).then((res) => {
-          if (res && res.ok) {
-            const clone = res.clone();
-            caches.open(IMMUTABLE_CACHE).then((c) => c.put(req, clone)).catch(() => {});
-          }
-          return res;
-        }).catch(() =>
-          // Offline: fall back to the cached shell so the app still opens.
-          caches.match(req).then((m) => m || caches.match('./index.html'))
-        )
-      );
-      return;
-    }
-    if (isAsset(url)) {
-      // CACHE-FIRST for immutable assets (fonts, libs, icons).
-      e.respondWith(
-        caches.match(req).then((hit) => {
-          if (hit) return hit;
-          return fetch(req).then((res) => {
-            if (res && res.ok) {
-              const clone = res.clone();
-              caches.open(IMMUTABLE_CACHE).then((c) => c.put(req, clone)).catch(() => {});
-            }
-            return res;
-          });
+  // Never touch Supabase or any other cross-origin API.
+  if (url.origin !== self.location.origin) return;
+
+  /* App shell — network first, cache as the offline fallback. */
+  if (isShellRequest(url, request)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          put(SHELL_CACHE, request, response);
+          return response;
         })
-      );
-      return;
-    }
-    // Anything else same-origin: network normally.
+        .catch(() =>
+          caches.match(request)
+            // any shell copy beats nothing; './' and './index.html' are aliases
+            .then((hit) => hit || caches.match('./index.html', { cacheName: SHELL_CACHE }))
+            .then((hit) => hit || caches.match('./', { cacheName: SHELL_CACHE }))
+        )
+    );
     return;
   }
+
+  /* Static assets — cache first, refresh in the background. */
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request, { cacheName: ASSET_CACHE }).then((hit) => {
+        const network = fetch(request)
+          .then((response) => {
+            put(ASSET_CACHE, request, response);
+            return response;
+          })
+          // offline with a cold cache: nothing to give back
+          .catch(() => hit || Response.error());
+
+        if (hit) {
+          event.waitUntil(network.catch(() => {}));   // stale-while-revalidate
+          return hit;
+        }
+        return network;
+      })
+    );
+    return;
+  }
+
+  // Anything else same-origin: leave it to the browser.
 });
