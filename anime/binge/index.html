@@ -656,8 +656,14 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
   #panel-left .panel-inner,#panel-right .panel-inner{width:100%}
 }
 @media (max-width:760px){
-  .tb-center{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
-  .rank-bar{width:46px}
+  /* crowded bar: compact it and let it swipe horizontally — nothing is lost, just scroll */
+  #topbar{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:8px;padding:0 10px}
+  #topbar::-webkit-scrollbar{display:none}
+  .tb-left,.tb-center,.tb-right{flex:0 0 auto}
+  .tb-center{justify-content:flex-start}
+  .logo-text{display:none}
+  .icon-btn{width:32px;height:32px;font-size:15px;flex:0 0 auto}
+  .rank-bar{display:none}
   .chip-sub{display:none}
   #player-shell{width:100%}
   .clear-grid{grid-template-columns:1fr}
@@ -768,6 +774,14 @@ kbd{font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--bg3)
           </div>
           <div class="form-error" id="home-error" hidden></div>
           <div class="fineprint">100% illusion — the video is never downloaded or cut. It just gets an anime costume.</div>
+        </div>
+
+        <div class="start-card">
+          <div class="sc-label">IMPORT A SEASON CONFIG ⚡</div>
+          <div class="sc-sub" style="margin-bottom:12px">Your AI (or a friend) prepared a season for you? Paste the config — the video, episode length, anime titles, everything starts by itself. No link juggling, perfect on mobile.</div>
+          <div class="names-row">
+            <button class="btn btn-primary" id="btn-config-import">PASTE A CONFIG ⚡</button>
+          </div>
         </div>
 
         <div class="features">
@@ -1164,6 +1178,11 @@ function autoEpLen(duration){ return (duration <= 1800) ? 15*60 : 20*60; }
 function pickEpLen(choice, duration){
   if (choice === '15') return 15*60;
   if (choice === '20') return 20*60;
+  if (typeof choice === 'number' && isFinite(choice) && choice >= 5 && choice <= 90) return Math.round(choice)*60;
+  if (typeof choice === 'string' && /^\d+(\.0+)?$/.test(choice.trim())){
+    const n = parseFloat(choice);
+    if (n >= 5 && n <= 90) return Math.round(n)*60;
+  }
   return autoEpLen(duration);
 }
 
@@ -1202,7 +1221,7 @@ function daysBetween(a, b){
 }
 
 const ACP = { clamp, hashStr, mulberry32, kanjiNum, fmtClock, fmtDur, parseYouTubeId, splitEpisodes,
-  autoEpLen, pickEpLen, makeSeasonPlan, rankInfo, daysBetween, normalizeNames, parseSeasonTitle, RANKS, TITLE_A, TITLE_B, JP_SUBS,
+  autoEpLen, pickEpLen, makeSeasonPlan, rankInfo, daysBetween, normalizeNames, parseSeasonTitle, parseSeasonConfig, RANKS, TITLE_A, TITLE_B, JP_SUBS,
   MISSIONS, BOSSES, FINALE_BOSS, ACH_DEFS };
 
 /* Lenient parser for AI-generated episode names. Accepts:
@@ -1247,6 +1266,50 @@ function parseSeasonTitle(data){
   if (typeof t !== 'string') return null;
   t = t.trim().slice(0, 90);
   return t || null;
+}
+
+/* Parse a full season config (from an AI reply or a friend's export).
+   One blob = video link + episode length + season title + episode names. */
+function parseSeasonConfig(text){
+  let raw = String(text == null ? '' : text).trim();
+  if (!raw) throw new Error('Paste the config JSON first (or upload the file).');
+  raw = raw.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
+  let data = null;
+  try{ data = JSON.parse(raw); }
+  catch(e){
+    const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+    if (a >= 0 && b > a){ try{ data = JSON.parse(raw.slice(a, b + 1)); }catch(e2){} }
+    if (!data) throw new Error("That doesn't parse as JSON. Paste the whole config your AI gave you.");
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    throw new Error('A season config is a JSON object like {"app":"anime-class-player","video":"…","episodes":[…]}.');
+  const vid = parseYouTubeId(data.video || data.video_url || data.videoUrl || data.url || data.link || data.youtube || '');
+  const seasonTitle = parseSeasonTitle(data);
+  const eps = normalizeNames(data);
+  if (!vid) throw new Error(
+    'This JSON has no video link — it looks like a names-only payload. Start the season first, then import it via ✨ AI EPISODE NAMES.');
+  // episode length: "auto" | 15 | 20 | minutes number | seconds number
+  let el = data.episode_length != null ? data.episode_length
+         : data.episodeLength != null ? data.episodeLength
+         : data.eplen != null ? data.eplen : null;
+  let eplen = 'auto';
+  if (el != null){
+    if (typeof el === 'string' && /^auto$/i.test(el.trim())) eplen = 'auto';
+    else {
+      let n = parseFloat(el);
+      if (!isNaN(n)){
+        if (n >= 300) n = Math.round(n / 60);   // seconds → minutes
+        eplen = (n >= 5 && n <= 90) ? Math.round(n) : 'auto';
+      }
+    }
+  }
+  const cc = !!(data.captions || data.cc);
+  const map = {};
+  for (const e of eps){
+    const i = e.ep - 1;
+    if (i >= 0 && i < 400) map[i] = { title: e.title, jp: e.jp || '', summary: e.summary || '' };
+  }
+  return { videoId: vid, url: 'https://www.youtube.com/watch?v=' + vid, eplen, cc, seasonTitle, eps, map };
 }
 
 /* ────────────────────────── STATE ────────────────────────── */
@@ -1530,6 +1593,24 @@ async function completeSeason(p, dur, opts){
           createdAt:Date.now(), lastEpIndex:0, episodes:makeSeasonPlan(dur, epLenSec, videoId) };
     try{ const t = p.getVideoData().title; if (t) v.title = String(t).slice(0, 90); }catch(e){}
   }
+  if (pendingConfig && pendingConfig.videoId === videoId){
+    const cfg = pendingConfig;
+    pendingConfig = null;
+    // untouched season → honor the config's episode length (rebuild the plan)
+    const untouched = !v.episodes.some(e => e.watched || (e.lastPos || 0) > 30);
+    const wantLen = pickEpLen(cfg.eplen, dur);
+    if (untouched && wantLen !== v.epLen){
+      v.epLen = wantLen;
+      v.episodes = makeSeasonPlan(dur, wantLen, videoId);
+      v.lastEpIndex = 0;
+    }
+    if (cfg.seasonTitle){
+      if (!v.autoTitle) v.autoTitle = v.title;
+      v.customTitle = cfg.seasonTitle;
+      v.title = cfg.seasonTitle;
+    }
+    if (cfg.map && Object.keys(cfg.map).length) v.nameMap = cfg.map;
+  }
   V = v; saveVideo(videoId, V);
   G.lastVideoId = videoId; saveGlobal();
   S.duration = v.duration; S.epLen = v.epLen; S.episodes = v.episodes;
@@ -1597,6 +1678,54 @@ function importNames(text){
   applyNameMap();
   saveVideo(S.videoId, V);
   return { applied, total: S.episodes.length, provided: eps.length, seasonTitle };
+}
+
+/* One-shot season import: paste a config → season starts itself, fully named. */
+let pendingConfig = null;
+
+async function importSeasonConfig(text){
+  const cfg = parseSeasonConfig(text);   // throws friendly errors
+  if (S.screen === 'loading') throw new Error('Hold on — a season is still loading.');
+  // same video already on screen → apply in place
+  if (S.screen === 'player' && S.videoId === cfg.videoId && V && S.episodes.length){
+    if (cfg.seasonTitle){
+      if (!V.autoTitle) V.autoTitle = V.title;
+      V.customTitle = cfg.seasonTitle;
+      V.title = cfg.seasonTitle;
+    }
+    let applied = 0;
+    if (Object.keys(cfg.map).length){
+      V.nameMap = cfg.map;
+      for (const k of Object.keys(cfg.map)) if (S.episodes[k]) applied++;
+    }
+    applyNameMap();
+    saveVideo(S.videoId, V);
+    return { type: 'applied-current', applied, seasonTitle: cfg.seasonTitle };
+  }
+  pendingConfig = cfg;
+  const ok = await beginSeason(cfg.url, { videoId: cfg.videoId, eplen: cfg.eplen, cc: cfg.cc, config: cfg });
+  if (!ok){ pendingConfig = null; throw new Error('The video in this config failed to load — check the link.'); }
+  return { type: 'started', videoId: cfg.videoId };
+}
+
+/* Export the current season as a portable config (share/backup/AI context). */
+function exportSeasonConfig(){
+  if (!V || !S.episodes || !S.episodes.length) throw new Error('Start a season first.');
+  const cfg = {
+    app: 'anime-class-player',
+    version: 1,
+    video: 'https://www.youtube.com/watch?v=' + S.videoId,
+    episode_length: Math.round(V.epLen / 60),
+    captions: !!V.cc,
+    episodes: S.episodes.map(e => {
+      const o = { ep: e.i + 1, title: e.title };
+      if (e.jp) o.jp = e.jp;
+      if (e.summary) o.summary = e.summary;
+      return o;
+    }),
+  };
+  if (V.customTitle) cfg.season_title = V.customTitle;
+  return JSON.stringify(cfg, null, 2);
 }
 
 /* ────────────────────────── EPISODE CONTROL ────────────────────────── */
@@ -1846,11 +1975,12 @@ if (typeof window !== 'undefined'){
     get S(){ return S; }, get G(){ return G; }, get V(){ return V; },
     get player(){ return player; },
     ACP, startEpisode, togglePlay, seekRel, awardXP, beginSeason,
+    importSeasonConfig, exportSeasonConfig, parseSeasonConfig,
   };
 }
 if (typeof module !== 'undefined' && module.exports){
   module.exports = { ACP, splitEpisodes, fmtClock, fmtDur, parseYouTubeId, rankInfo,
-    makeSeasonPlan, pickEpLen, autoEpLen, kanjiNum, normalizeNames, parseSeasonTitle, RANKS, ACH_DEFS, MISSIONS, BOSSES };
+    makeSeasonPlan, pickEpLen, autoEpLen, kanjiNum, normalizeNames, parseSeasonTitle, parseSeasonConfig, RANKS, ACH_DEFS, MISSIONS, BOSSES };
 }
 
 </script>
@@ -2666,8 +2796,12 @@ STYLE RULES
 
 OUTPUT
 Reply with ONLY valid JSON. No markdown fences, no commentary, nothing before or after:
-{"season_title":"...","episodes":[{"ep":1,"title":"...","jp":"...","summary":"..."},{"ep":2,"title":"...","jp":"...","summary":"..."}]}
+{"app":"anime-class-player","version":1,"video":"<the video link below, copied exactly>","episode_length":${lenMin},"season_title":"...","episodes":[{"ep":1,"title":"...","jp":"...","summary":"..."},{"ep":2,"title":"...","jp":"...","summary":"..."}]}
 One entry per episode, numbered from 1, covering the whole video.
+
+THE VIDEO
+- Link: https://www.youtube.com/watch?v=${S.videoId || '…'}
+- Echo this link exactly as the "video" field of your output config — the student's app uses it to start the season automatically.
 
 TRANSCRIPT BEGINS
 (paste the subtitles here)
@@ -2702,9 +2836,10 @@ function openNames(){
   openModal(`
     <div class="modal-head"><div class="modal-title">AI EPISODE NAMES<small>命名 · optional</small></div><button class="modal-close">✕</button></div>
     <div class="help-p"><b>1.</b> Use your subtitle extension to copy this video's subtitles.<br>
-    <b>2.</b> Copy the prompt below — it already knows this season's episode length.<br>
+    <b>2.</b> Copy the prompt below — it already knows this season's episode length and video link.<br>
     <b>3.</b> Paste the prompt + the subtitles into <b>Gemini, ChatGPT or Claude</b> and send.<br>
-    <b>4.</b> Paste the JSON it replies with below (or upload the file) → titles that match each episode's real topic.</div>
+    <b>4.</b> Paste the JSON it replies with below (or upload the file) → titles that match each episode's real topic.<br>
+    <span style="color:var(--cyan)">📱 On mobile: skip steps 1–4 here — get the full config from your AI and use <b>IMPORT A SEASON CONFIG</b> on the home screen.</span></div>
     <div class="spr-label"><span>THE PROMPT</span><span class="names-btns"><button class="btn btn-ghost small" id="btn-copy-prompt">COPY PROMPT</button><button class="btn btn-ghost small" id="btn-copy-link" title="Copy this video's YouTube link">COPY VIDEO LINK</button></span></div>
     <pre class="prompt-box" id="prompt-box">${escapeHtml(buildPromptText())}</pre>
     <div class="spr-label" style="margin-top:14px"><span>PASTE THE AI'S JSON REPLY</span></div>
@@ -2714,7 +2849,8 @@ function openNames(){
       <label class="btn btn-ghost">UPLOAD FILE<input type="file" id="names-file" accept=".json,.txt" hidden></label>
       ${named ? '<button class="btn btn-ghost small" id="btn-restore-names">restore auto names</button>' : ''}
     </div>
-    <div class="names-status" id="names-status" hidden></div>`);
+    <div class="names-status" id="names-status" hidden></div>
+    <div class="spr-label" style="margin-top:14px"><span>SHARE / BACKUP THIS SEASON</span><span class="names-btns"><button class="btn btn-ghost small" id="btn-copy-config" title="Copy this season as a portable config JSON">COPY CONFIG</button><button class="btn btn-ghost small" id="btn-dl-config">DOWNLOAD .JSON</button></span></div>`);
   $('#btn-copy-prompt').addEventListener('click', () => copyText(buildPromptText(), $('#btn-copy-prompt')));
   $('#btn-copy-link').addEventListener('click', () => copyText('https://www.youtube.com/watch?v=' + (S.videoId || ''), $('#btn-copy-link')));
   $('#btn-apply-names').addEventListener('click', applyNamesFromModal);
@@ -2727,6 +2863,20 @@ function openNames(){
     const r = new FileReader();
     r.onload = () => { $('#names-input').value = String(r.result || ''); applyNamesFromModal(); };
     r.readAsText(f);
+  });
+  $('#btn-copy-config').addEventListener('click', () => {
+    try{ copyText(exportSeasonConfig(), $('#btn-copy-config')); }
+    catch(e){ toast(e.message, { err:true }); }
+  });
+  $('#btn-dl-config').addEventListener('click', () => {
+    try{
+      const blob = new Blob([exportSeasonConfig()], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'anime-class-player-season.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }catch(e){ toast(e.message, { err:true }); }
   });
   const rst = $('#btn-restore-names');
   if (rst) rst.addEventListener('click', () => {
@@ -2746,10 +2896,88 @@ function openNames(){
   });
 }
 
-function applyNamesFromModal(){
+/* ─────────────── SEASON CONFIG IMPORT ─────────────── */
+function openConfigImport(){
+  openModal(`
+    <div class="modal-head"><div class="modal-title">IMPORT SEASON CONFIG<small>設定ファイル</small></div><button class="modal-close">✕</button></div>
+    <div class="help-p">A season config is <b>one JSON blob with everything</b>: the video link, episode length, season title and anime episode names. Your AI generates it (the prompt asks for exactly this format — the video link is already in it), or a friend exports one from their app. Paste it here and the season starts by itself.</div>
+    <textarea class="paste-area" id="config-input" spellcheck="false" placeholder='{"app":"anime-class-player","version":1,"video":"https://www.youtube.com/watch?v=…","episode_length":20,"season_title":"…","episodes":[{"ep":1,"title":"…","jp":"…","summary":"…"}]}'></textarea>
+    <div class="names-row">
+      <button class="btn btn-primary" id="btn-config-apply">IMPORT & START ⚡</button>
+      <label class="btn btn-ghost">UPLOAD FILE<input type="file" id="config-file" accept=".json,.txt" hidden></label>
+    </div>
+    <div class="names-status" id="config-status" hidden></div>`);
+  const apply = async () => {
+    const status = $('#config-status');
+    status.hidden = false; status.className = 'names-status'; status.textContent = 'Importing…';
+    try{
+      const r = await importSeasonConfig($('#config-input').value);
+      if (r.type === 'applied-current'){
+        status.className = 'names-status ok';
+        status.textContent = `✨ Applied to the current season — ${r.applied} episode names` +
+          (r.seasonTitle ? `, retitled “${r.seasonTitle}”` : '') + '.';
+        refreshNamesUI();
+      } else {
+        status.className = 'names-status ok';
+        status.textContent = '⚡ Season starting…';
+        setTimeout(closeModal, 700);
+      }
+      toast('⚡ Season config imported');
+      sfx.xp();
+    }catch(e){
+      status.className = 'names-status err';
+      status.textContent = e.message;
+    }
+  };
+  $('#btn-config-apply').addEventListener('click', apply);
+  $('#config-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); apply(); }
+  });
+  $('#config-file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { $('#config-input').value = String(r.result || ''); apply(); };
+    r.readAsText(f);
+  });
+}
+
+async function applyNamesFromModal(){
   const status = $('#names-status');
+  const txt = $('#names-input').value;
+  // a full season config (JSON with a video link) routes through the config importer
+  let isConfig = false;
   try{
-    const r = importNames($('#names-input').value);
+    const probe = JSON.parse(txt.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim());
+    if (probe && typeof probe === 'object' && !Array.isArray(probe) &&
+        (probe.video || probe.video_url || probe.videoUrl || probe.url || probe.link || probe.youtube)) isConfig = true;
+  }catch(e){}
+  if (isConfig){
+    status.hidden = false;
+    status.className = 'names-status';
+    status.textContent = 'Importing config…';
+    try{
+      const r = await importSeasonConfig(txt);
+      if (r.type === 'applied-current'){
+        status.className = 'names-status ok';
+        status.textContent = `⚡ Config applied to this season — ${r.applied} episode names` +
+          (r.seasonTitle ? `, retitled “${r.seasonTitle}”` : '') + '.';
+        refreshNamesUI();
+      } else {
+        status.className = 'names-status ok';
+        status.textContent = '⚡ Season starting…';
+        setTimeout(closeModal, 700);
+      }
+      toast('⚡ Season config imported');
+      sfx.xp();
+    }catch(e){
+      status.className = 'names-status err';
+      status.textContent = e.message;
+    }
+    return;
+  }
+  try{
+    const r = importNames(txt);
     status.hidden = false;
     status.className = 'names-status ok';
     const parts = [];
@@ -2935,6 +3163,7 @@ function wireAll(){
   $('#input-url').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); startFromHome(); } });
   $('#input-url').addEventListener('input', () => { $('#home-error').hidden = true; });
   $('#btn-continue').addEventListener('click', () => { if (G.lastVideoId) beginSeason('', { videoId: G.lastVideoId }); });
+  $('#btn-config-import').addEventListener('click', openConfigImport);
 
   /* loading */
   $('#btn-load-retry').addEventListener('click', () => {
@@ -3115,5 +3344,5 @@ if (typeof document !== 'undefined' && document.getElementById('app')){
 }
 
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a49c2763aa318a55',t:'MTc5MTg3MTUzOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
