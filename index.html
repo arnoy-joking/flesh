@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Flësh</title>
-<link rel="icon" type="image/svg+xml" href="flashcard_logo_reference_cutout.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%232F6F52'/%3E%3Cstop offset='100%25' stop-color='%23C98A2C'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2' y='3' width='20' height='26' rx='3' fill='%23161A20' stroke='%232F6F52' stroke-width='1.5'/%3E%3Crect x='9' y='1' width='20' height='26' rx='3' fill='url(%23g)' opacity='.9'/%3E%3Cpath d='M17 10l4 5h-3v7h-2v-7h-3z' fill='%23fff'/%3E%3C/svg%3E">
 
 <meta name="description" content="Flësh — math, chemistry and flashcard study app. Works offline.">
 <meta name="theme-color" content="#161A20">
@@ -128,6 +127,7 @@
   html[data-theme="nord"] .sheet-option.correct{ border-color:rgba(163,190,140,.5); background:rgba(163,190,140,.13); }
   html[data-theme="nord"] .sheet-explanation{ background:rgba(136,192,208,.10); border-color:rgba(136,192,208,.32); }
   html[data-theme="nord"] .sheet-svg{ background:rgba(136,192,208,.05); }
+  html[data-theme="nord"] .card-img{ background:rgba(136,192,208,.07); border-color:var(--ink-line); }
   html[data-theme="nord"] ::selection{ background:var(--azure); color:#232B33; }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -329,8 +329,6 @@
     padding:10px 12px; border-radius:11px; font:inherit; font-size:13.5px; line-height:1.5;
     background:transparent; color:var(--ink-bright); border:1.5px solid var(--ink-line);
     transition:border-color .16s var(--ease), background .16s var(--ease);
-    /* PERF (touch): no double-tap zoom wait, no grey flash, GPU-only transitions */
-    touch-action:manipulation; -webkit-tap-highlight-color:transparent;
   }
   .sq-opt:hover:not(.locked){ border-color:var(--azure); background:rgba(136,192,208,.06); }
   .sq-opt .key{
@@ -359,13 +357,8 @@
     background:rgba(136,192,208,.10); border:1px solid rgba(136,192,208,.30); overflow-wrap:anywhere;
   }
   .sheet-rows{ display:flex; flex-direction:column; gap:10px; }
-  /* PERF: rows are a long list — skip layout/paint for everything off-screen.
-     Huge win on mobile GPUs; harmless on desktop. contain-intrinsic-size is a
-     placeholder height so the scrollbar stays stable before a row is rendered. */
-  .sheet-row, .sq-row{
-    content-visibility:auto;
-    contain-intrinsic-size:auto 320px;
-  }
+  /* Long decks: let the browser skip rendering rows that are off-screen. */
+  .sheet-row, .sq-row{ content-visibility:auto; contain-intrinsic-size:auto 200px; }
   .sheet-row{
     border:1px solid var(--ink-line); border-radius:14px; background:var(--ink-soft); overflow:hidden;
     box-shadow:0 10px 26px -22px var(--shadow-strong);
@@ -396,7 +389,8 @@
   .sheet-option-letter{ font-family:var(--font-mono); color:var(--amber); font-weight:700; min-width:18px; }
   .sheet-explanation{ margin-top:10px; padding:10px 12px; border-radius:9px; background:rgba(201,138,44,.10); border:1px solid rgba(201,138,44,.28); font-size:12.5px; line-height:1.55; }
   .sheet-svg{ margin-top:10px; border:1px solid var(--ink-line); border-radius:10px; padding:8px; background:rgba(255,255,255,.04); display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  .sheet-svg svg{ max-width:100%; max-height:160px; width:auto; height:auto; }
+  .sheet-svg svg{ max-width:100%; width:auto; height:auto; max-height:min(55dvh, 460px); }
+  .sheet-svg img{ max-width:100%; width:auto; height:auto; max-height:min(55dvh, 460px); border-radius:6px; }
   .sheet-visual-note{ margin-top:8px; font-family:var(--font-mono); color:var(--ink-muted); font-size:10px; border:1px dashed var(--ink-line); border-radius:8px; padding:7px 9px; }
   .sheet-answer-hidden{ display:none; color:var(--ink-muted); font-family:var(--font-mono); font-size:11px; padding:8px 10px; border:1px dashed var(--ink-line); border-radius:8px; }
   .sheet-rows.answers-hidden .sheet-a-body{ display:none; }
@@ -452,17 +446,29 @@
 
   .card-visual{ position:relative; height:150px; margin-top:10px; border-radius:9px; background:rgba(255,255,255,.3); border:1px solid var(--paper-shadow); overflow:hidden; }
   .card-visual canvas{ width:100%; height:100%; display:block; }
-  .card-svg{ margin-top:10px; border-radius:9px; background:rgba(255,255,255,.25); border:1px solid var(--paper-shadow); overflow:hidden; display:flex; align-items:center; justify-content:center; padding:8px; }
-  .card-svg svg{ max-width:100%; max-height:200px; width:auto; height:auto; display:block; }
+  .card-svg{
+    margin-top:10px; border-radius:9px; background:rgba(255,255,255,.25); border:1px solid var(--paper-shadow);
+    overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:8px;
+  }
+  /* Scale big SVGs down to fit; never crop them off. */
+  .card-svg svg{ max-width:100%; width:auto; height:auto; max-height:min(52dvh, 420px); display:block; }
+  /* Images (base64 / data URI / URL) */
+  .card-img{
+    margin-top:10px; border-radius:9px; background:rgba(255,255,255,.25); border:1px solid var(--paper-shadow);
+    overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:8px;
+  }
+  .card-img img{ max-width:100%; width:auto; height:auto; max-height:min(52dvh, 420px); display:block; border-radius:6px; }
   /* visuals inside MCQ options (smaller, inline) */
   .card-visual.opt-visual{ height:92px; margin-top:7px; }
   .card-svg.opt-svg{ margin-top:7px; padding:6px; }
-  .card-svg.opt-svg svg{ max-height:84px; }
+  .card-svg.opt-svg svg{ max-height:min(28dvh, 180px); }
+  .card-img.opt-img{ margin-top:7px; padding:6px; }
+  .card-img.opt-img img{ max-height:min(28dvh, 180px); }
   .opt-body{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
   .opt-body > .card-visual, .opt-body > .card-svg{ margin-top:7px; }
   /* inline svg pasted straight into text */
-  .inline-svg-wrap{ display:block; margin:8px 0; text-align:center; }
-  .inline-svg-wrap svg{ max-width:100%; max-height:170px; width:auto; height:auto; display:inline-block; }
+  .inline-svg-wrap{ display:block; margin:8px 0; text-align:center; overflow:auto; }
+  .inline-svg-wrap svg{ max-width:100%; width:auto; height:auto; max-height:min(45dvh, 380px); display:inline-block; }
   .sheet-option .opt-body{ display:flex; flex-direction:column; align-items:flex-start; }
   /* Chemistry compound display */
   .chem-compound{
@@ -1546,16 +1552,13 @@
     // Wait for parent to have real dimensions (absolute-positioned face may not yet)
     const parent = canvas.parentElement;
     if(!parent) return;
-    /* Measure the PARENT, not the canvas: the canvas gets an inline width from
-       this function, so reading it back would freeze the graph at its first
-       size and stop it reflowing on rotation / split-screen. */
-    let cssW = parent.clientWidth || canvas.clientWidth, cssH = parent.clientHeight || canvas.clientHeight;
+    let cssW = parent.clientWidth, cssH = parent.clientHeight;
     if((cssW < 10 || cssH < 10) && _retries < 10){
       // Retry after layout settles
       requestAnimationFrame(()=> renderPlot(canvas, spec, _retries + 1));
       return;
     }
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);   // cap: dpr 3 phones render 2.25x more pixels for no gain
     canvas.width = Math.max(1,cssW*dpr); canvas.height = Math.max(1,cssH*dpr);
     canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
     const ctx = canvas.getContext('2d');
@@ -1634,11 +1637,14 @@
     }));
     if(canvas._chartInstance){ try{ canvas._chartInstance.destroy(); }catch(e){} }
     try{
+      const smallScreen = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
       canvas._chartInstance = new Chart(canvas.getContext('2d'), {
         type: spec.kind==='scatter' ? 'scatter' : (spec.kind==='bar' ? 'bar' : 'line'),
         data: { labels: spec.labels, datasets },
         options: {
-          responsive:true, maintainAspectRatio:false, animation:{duration:300},
+          responsive:true, maintainAspectRatio:false,
+          animation:{ duration: smallScreen ? 0 : 300 },
+          devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
           plugins:{ legend:{ display: datasets.length>1, labels:{color:textColor, font:{size:10}, boxWidth:10 } } },
           scales:{ x:{ ticks:{color:textColor, font:{size:9.5}}, grid:{color:gridColor} },
                     y:{ ticks:{color:textColor, font:{size:9.5}}, grid:{color:gridColor} } }
@@ -1669,24 +1675,9 @@
   }
   const VISUAL_REG = Object.create(null);
   let visualSeq = 0;
-  /* PERF: when a caller renders a known subset of cards (e.g. one quiz row),
-     it sets a numeric scope so visual ids are DETERMINISTIC ('s12:question:0')
-     instead of a new global id every render. That keeps VISUAL_REG bounded —
-     previously every full-sheet re-render added a fresh entry per visual and
-     nothing was ever removed, so the registry (and memory) grew forever. */
-  let visualScope = null;
-  const scopeSeq = Object.create(null);
-  function visualHtml(spec, cls, key){
+  function visualHtml(spec, cls){
     if(!spec) return '';
-    let id;
-    if(visualScope === null){
-      id = 'v' + (++visualSeq);
-    } else {
-      // per-(scope,key) counter, so several visuals in one row stay unique and
-      // re-rendering the same row reuses the same ids instead of leaking new ones
-      const k = visualScope + ':' + (key || 'v');
-      id = 's' + k + ':' + (scopeSeq[k] = (scopeSeq[k] || 0) + 1);
-    }
+    const id = 'v' + (++visualSeq);
     VISUAL_REG[id] = { type: spec.expr ? 'plot' : 'chart', spec: spec };
     return `<div class="card-visual ${cls||''}" data-vid="${id}"><canvas class="visual-canvas" data-vid="${id}"></canvas></div>`;
   }
@@ -1694,83 +1685,30 @@
     if(!raw) return '';
     return `<div class="card-svg ${cls||''}">${sanitizeSvg(raw)}</div>`;
   }
-  /* A canvas' own clientWidth is pinned by the inline style renderPlot sets, so
-     measure the PARENT when we need to know the space actually available. */
-  function visualBoxWidth(cv){
-    const p = cv && cv.parentElement;
-    const w = p ? p.clientWidth : 0;
-    return w > 0 ? w : (cv ? cv.clientWidth : 0);
+  /* Images: accept a full data: URI, a plain http(s)/relative URL, or raw
+     base64 (no header). Raw base64 is wrapped as a PNG data URI. */
+  function imgSrc(raw){
+    const v = String(raw == null ? '' : raw).trim();
+    if(!v) return '';
+    if(/^data:/i.test(v)) return v;
+    if(/^(https?:)?\/\//i.test(v) || /^\.{0,2}\//.test(v)) return v;
+    if(/^[A-Za-z0-9+/\s]+={0,2}$/.test(v) && v.length > 40) return 'data:image/png;base64,' + v.replace(/\s+/g,'');
+    return v;
   }
-  /* Rows use content-visibility:auto, so an off-screen row's subtree is not laid
-     out and its canvas measures 0x0. Drawing then would produce a blank graph
-     that never repaints. Instead, wait until the row is near the viewport. */
-  let visualIO = null;
-  const observedVisuals = new Set();
-  function ensureVisualObserver(){
-    if(typeof IntersectionObserver === 'undefined') return null;
-    if(!visualIO){
-      visualIO = new IntersectionObserver((entries) => {
-        entries.forEach((en) => {
-          if(!en.isIntersecting) return;
-          const cv = en.target;
-          visualIO.unobserve(cv);
-          observedVisuals.delete(cv);
-          const rec = VISUAL_REG[cv.getAttribute('data-vid')];
-          if(rec) drawVisual(cv, rec);
-        });
-      }, { rootMargin: '400px 0px' });
-    }
-    return visualIO;
+  function imgHtml(raw, cls){
+    if(!raw) return '';
+    return `<div class="card-img ${cls||''}"><img src="${escAttr(imgSrc(raw))}" alt="" loading="lazy" decoding="async"></div>`;
   }
-  /* Drop canvases that left the DOM (rows are rebuilt on search / reset) so the
-     observer never accumulates detached nodes. */
-  function pruneObservedVisuals(){
-    if(!observedVisuals.size || !visualIO) return;
-    observedVisuals.forEach((cv) => {
-      if(!cv.isConnected){ visualIO.unobserve(cv); observedVisuals.delete(cv); }
-    });
-  }
-  function drawVisual(cv, rec){
-    requestAnimationFrame(() => {
-      cv.__mountedSpec = rec.spec;
-      cv.__mountedW = visualBoxWidth(cv);
-      if(rec.type === 'plot') renderPlot(cv, rec.spec);
-      else renderChartVisual(cv, rec.spec);
-    });
-  }
-  function mountVisualsIn(root, force){
+  function mountVisualsIn(root){
     if(!root || !root.querySelectorAll) return;
-    pruneObservedVisuals();
     root.querySelectorAll('canvas.visual-canvas[data-vid]').forEach((cv) => {
-      const vid = cv.getAttribute('data-vid');
-      const rec = VISUAL_REG[vid];
+      const rec = VISUAL_REG[cv.getAttribute('data-vid')];
       if(!rec) return;
-      const w = visualBoxWidth(cv);
-      // PERF: never draw the same spec into the same canvas at the same size
-      // twice. Full re-renders used to redraw every graph in the deck on every
-      // single tap — on a phone that is the difference between smooth and stuck.
-      if(!force && cv.__mountedSpec === rec.spec && cv.__mountedW === w) return;
-      if(w < 10){
-        const io = ensureVisualObserver();
-        if(io){
-          // leave it to the observer — drawing now would bake in a blank 0x0 graph
-          if(!observedVisuals.has(cv)){ observedVisuals.add(cv); io.observe(cv); }
-          return;
-        }
-      }
-      try{ drawVisual(cv, rec); }
-      catch(e){ console.warn('visual mount failed', e); }
+      try{
+        if(rec.type === 'plot') requestAnimationFrame(()=> renderPlot(cv, rec.spec));
+        else requestAnimationFrame(()=> renderChartVisual(cv, rec.spec));
+      }catch(e){ console.warn('visual mount failed', e); }
     });
-  }
-  /* Rotation / split-screen / theme change: repaint the graphs that are on
-     screen. Off-screen ones stay untouched (and repaint when scrolled to). */
-  function redrawSheetVisuals(){
-    const rowsEl = $('sheetRows');
-    if(!rowsEl || !rowsEl.querySelectorAll) return;
-    rowsEl.querySelectorAll('canvas.visual-canvas[data-vid]').forEach((cv) => {
-      cv.__mountedSpec = null; cv.__mountedW = -1;
-    });
-    mountVisualsIn(rowsEl);
   }
   /* richText = formatText + inline <svg> blocks preserved (they are pulled out
      before escaping, sanitized, then put back so they render as real SVG). */
@@ -1786,29 +1724,32 @@
     return out;
   }
   function normOption(opt){
-    if(opt == null) return { text:'', svg:'', graph:null };
-    if(typeof opt === 'string') return { text:opt, svg:'', graph:null };
+    if(opt == null) return { text:'', svg:'', img:'', graph:null };
+    if(typeof opt === 'string') return { text:opt, svg:'', img:'', graph:null };
     const text = opt.text != null ? opt.text : (opt.__text != null ? opt.__text : (opt.label != null ? opt.label : (opt.t != null ? opt.t : '')));
-    return { text:text, svg:opt.svg || '', graph:opt.chart || opt.plot || null };
+    return { text:text, svg:opt.svg || '', img:opt.img || opt.image || '', graph:opt.chart || opt.plot || null };
   }
   function optionText(opt){ return normOption(opt).text; }
   function optionVisuals(card, i, opt){
     const n = normOption(opt);
-    const key = 'opt' + i;
-    if(n.svg || n.graph) return svgHtml(n.svg, 'opt-svg') + visualHtml(n.graph, 'opt-visual', key);
+    if(n.svg || n.img || n.graph){
+      return svgHtml(n.svg, 'opt-svg') + imgHtml(n.img, 'opt-img') + visualHtml(n.graph, 'opt-visual');
+    }
     const svgs  = card.optionSvgs  || card.optionsSvg  || [];
+    const imgs  = card.optionImgs  || card.optionsImg  || card.optionsImage || [];
     const charts= card.optionCharts|| card.optionsChart|| [];
     const plots = card.optionPlots || card.optionsPlot || [];
-    return svgHtml(svgs[i], 'opt-svg') + visualHtml(charts[i] || plots[i], 'opt-visual', key);
+    return svgHtml(svgs[i], 'opt-svg') + imgHtml(imgs[i], 'opt-img') + visualHtml(charts[i] || plots[i], 'opt-visual');
   }
   /* per-field visuals, e.g. visualsFor(c,'front') -> frontSvg/frontChart/frontPlot */
   function visualsFor(c, key){
     if(!c) return '';
     const cap = key ? key.charAt(0).toUpperCase() + key.slice(1) : '';
     const svg   = c[key+'Svg']   || c[key+'svg']   || (cap ? c['svg'+cap]   : '');
+    const img   = c[key+'Img']   || c[key+'img']   || c[key+'Image'] || c[key+'image'] || (cap ? (c['img'+cap] || c['image'+cap]) : '');
     const chart = c[key+'Chart'] || c[key+'chart'] || (cap ? c['chart'+cap] : '');
     const plot  = c[key+'Plot']  || c[key+'plot']  || (cap ? c['plot'+cap]  : '');
-    return svgHtml(svg) + visualHtml(chart || plot, '', key);
+    return svgHtml(svg) + imgHtml(img) + visualHtml(chart || plot);
   }
   function cardHasVisual(c){
     if(!c) return false;
@@ -1929,9 +1870,8 @@
   let currentVisual = null; // {type:'plot'|'chart', spec, canvas}
   let sheetAnswersVisible = true;
   let sheetMode = 'read';      // 'read' | 'quiz'
-  let sheetQuiz = {};          // idx -> { grade:'good'|'forgot'|null, pick:number }
-  let sheetRenderKey = '';     // what #sheetRows currently reflects (mode|search|answers|deck)
-  let sheetRenderedCount = 0;  // rows currently in the DOM (avoids an O(n) query per tap)
+  let sheetQuiz = {};          // idx -> { grade:'good'|'hard'|null, pick:number }
+  let sheetVisibleCount = 0;   // rows currently shown (used by the HUD)
   let pendingDeleteId = null;
   let pendingResume = null;   // {deckId, kind} awaiting Continue/Restart
   // library browser state
@@ -1960,7 +1900,6 @@
     if(meta) meta.setAttribute('content', theme === 'light' ? '#E7E9EE' : (theme === 'nord' ? '#2E3440' : '#161A20'));
     await sSet('settings:theme', theme);
     if(currentVisual) redrawCurrentVisual();
-    redrawSheetVisuals();          // graphs in Rows mode use the theme palette
     renderTopbarRightIcons();
   }
   function renderTopbarRightIcons(){
@@ -1974,10 +1913,7 @@
     if(currentVisual.type==='plot') renderPlot(currentVisual.canvas, currentVisual.spec);
     else renderChartVisual(currentVisual.canvas, currentVisual.spec);
   }
-  window.addEventListener('resize', debounce(() => {
-    if(currentVisual && currentVisual.type==='plot') redrawCurrentVisual();
-    redrawSheetVisuals();
-  }, 150));
+  window.addEventListener('resize', debounce(() => { if(currentVisual && currentVisual.type==='plot') redrawCurrentVisual(); }, 150));
   function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
   /* ============================================================
@@ -2540,17 +2476,9 @@
   ============================================================ */
   function cardQuestionText(c){ return c.type === 'mcq' ? c.question : c.front; }
   function cardAnswerText(c){ return c.type === 'mcq' ? (c.options ? optionText(c.options[c.answer]) : '') : c.back; }
-  /* PERF: the searchable string for a card never changes while the deck is open,
-     but it used to be rebuilt (concat + toLowerCase over every option) for every
-     card on every keystroke and every re-render. Memoise it per card object. */
-  const SEARCH_TEXT_CACHE = new WeakMap();
   function cardSearchText(c){
-    const cacheable = (c && typeof c === 'object');
-    if(cacheable){ const hit = SEARCH_TEXT_CACHE.get(c); if(hit !== undefined) return hit; }
-    const txt = [c.tag, c.type, cardQuestionText(c), cardAnswerText(c), ...(c.options||[]).map(optionText), c.explanation]
+    return [c.tag, c.type, cardQuestionText(c), cardAnswerText(c), ...(c.options||[]).map(optionText), c.explanation]
       .filter(Boolean).join(' ').toLowerCase();
-    if(cacheable) SEARCH_TEXT_CACHE.set(c, txt);
-    return txt;
   }
   function progressLabel(idx){
     const g = progressMap[idx];
@@ -2638,9 +2566,7 @@
     const toggle = $('sheetToggleAnswers');
     const start = $('sheetStartCards');
     search.value = '';
-    /* PERF: filtering + rebuilding the sheet on every keypress is what makes the
-       search box feel laggy on a phone. Coalesce bursts of keystrokes. */
-    search.oninput = debounce(renderStudySheetRows, 130);
+    search.oninput = renderStudySheetRows;
     toggle.onclick = () => { sheetAnswersVisible = !sheetAnswersVisible; renderStudySheetRows(); };
     start.onclick = () => startStudySession(activeDeck.cards.map((_,i)=>i), 'full');
     renderStudySheetRows();
@@ -2659,71 +2585,46 @@
     $('sqHud').hidden = !isQuiz;
     $('sheetToggleAnswers').textContent = sheetAnswersVisible ? 'Hide answers' : 'Show answers';
     rowsEl.classList.toggle('answers-hidden', !isQuiz && !sheetAnswersVisible);
-    /* PERF: building the HTML for the whole sheet is one thing; re-typesetting
-       math and redrawing every graph for rows that did not change was the real
-       cost. Remember what we last rendered so an answer tap can patch a single
-       row instead of rebuilding the deck. */
-    sheetRenderKey = isQuiz + '|' + q + '|' + sheetAnswersVisible + '|' + activeDeck.id;
-    /* Deterministic visual ids per card index keep VISUAL_REG bounded: re-rendering
-       the sheet reuses ids instead of minting a fresh registry entry every time. */
-    let rowsHTML = `<div class="sheet-empty">No rows match that search.</div>`;
-    if(filtered.length){
-      try{
-        rowsHTML = filtered.map(({c,idx}) => {
-          visualScope = idx;
-          return isQuiz ? sheetQuizRowHTML(c, idx) : sheetRowHTML(c, idx);
-        }).join('');
-      } finally { visualScope = null; }
-    }
-    rowsEl.innerHTML = rowsHTML;
+    rowsEl.innerHTML = filtered.length
+      ? filtered.map(({c,idx}) => isQuiz ? sheetQuizRowHTML(c, idx) : sheetRowHTML(c, idx)).join('')
+      : `<div class="sheet-empty">No rows match that search.</div>`;
     renderMath(rowsEl);
     mountVisualsIn(rowsEl);
-    sheetRenderedCount = filtered.length;
+    sheetVisibleCount = filtered.length;
     if(isQuiz){ bindSheetQuizClicks(rowsEl); renderSheetHud(filtered.length); }
     else rowsEl.onclick = null;
   }
-  /* True when the DOM in #sheetRows still matches the current filter/mode, so a
-     quiz answer can be applied with a surgical patch instead of a full rebuild. */
-  function sheetDomIsCurrent(){
-    if(!activeDeck) return false;
-    const search = $('sheetSearch');
-    const q = (search && search.value ? search.value : '').trim().toLowerCase();
-    const isQuiz = sheetMode === 'quiz';
-    return sheetRenderKey === (isQuiz + '|' + q + '|' + sheetAnswersVisible + '|' + activeDeck.id);
+
+  /* Re-render ONLY the row that changed. The old code rebuilt the whole sheet on
+     every tap, which re-ran KaTeX and every chart over all rows — that is what
+     made quiz rows crawl on phones. */
+  function rerenderQuizRow(idx){
+    const rowsEl = $('sheetRows');
+    const card = activeDeck && activeDeck.cards[idx];
+    const old = rowsEl && rowsEl.querySelector('.sq-row[data-idx="' + idx + '"]');
+    if(!card || !old){ renderStudySheetRows(); return; }
+    const tmp = document.createElement('div');
+    tmp.innerHTML = sheetQuizRowHTML(card, idx);
+    const node = tmp.firstElementChild;
+    if(!node){ renderStudySheetRows(); return; }
+    old.replaceWith(node);
+    renderMath(node);
+    mountVisualsIn(node);
+    renderSheetHud(sheetVisibleCount);
   }
 
   /* ---- quiz rows: interactive answering inside Rows mode ---- */
   function sheetQuizRowHTML(c, idx){
+    const letters = ['A','B','C','D','E','F'];
     const tag = c.tag ? `<span class="sheet-chip" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '';
     const ans = sheetQuiz[idx];
-    const isMcq = (c.type === 'mcq');
-    /* PERF: only build the visual markup we actually use — the old code always
-       built the legacy card-level visuals too and threw them away. */
-    let qVisuals = visualsFor(c, isMcq ? 'question' : 'front');
-    if(!qVisuals) qVisuals = svgHtml(c.svg) + visualHtml(c.chart || c.plot, '', 'legacy');
-    const qText = isMcq ? c.question : c.front;
-    const badge = (ans && ans.grade)
-      ? `<span class="sheet-progress ${ans.grade==='good'?'good':'hard'}">${ans.grade==='good'?'Correct':'Missed'}</span>` : '';
-
-    return `
-      <div class="sq-row" data-card-idx="${idx}">
-        <div class="sheet-row-top">
-          <span class="sheet-num">#${String(idx+1).padStart(2,'0')}</span>
-          ${tag}
-          <span class="sheet-type">${isMcq ? 'MCQ' : 'Basic'}</span>
-          ${badge}
-        </div>
-        <div class="sq-q">${richText(qText)}</div>
-        ${qVisuals}
-        <div class="sq-control">${sheetQuizControlHTML(c, idx)}</div>
-      </div>`;
-  }
-  /* The part of a quiz row that changes when you answer it. Kept separate so an
-     answer tap can rebuild ONE row instead of the whole deck. */
-  function sheetQuizControlHTML(c, idx){
-    const letters = ['A','B','C','D','E','F'];
-    const ans = sheetQuiz[idx];
     const pick = (ans && typeof ans.pick === 'number') ? ans.pick : -1;
+    const legacyVis = svgHtml(c.svg) + imgHtml(c.img || c.image) + visualHtml(c.chart || c.plot);
+    const qVisuals = (c.type === 'mcq')
+      ? (visualsFor(c,'question') || legacyVis)
+      : (visualsFor(c,'front')   || legacyVis);
+    const qText = c.type === 'mcq' ? c.question : c.front;
+
     let control = '';
     if(c.type === 'mcq'){
       const opts = (c.options||[]).map((opt,i) => {
@@ -2750,80 +2651,25 @@
     } else {
       control = `<button class="btn primary sq-reveal" data-sq-reveal="${idx}">Reveal answer</button>`;
     }
+
     const exp = (c.type === 'mcq' && ans && ans.grade && c.explanation)
       ? `<div class="sq-exp"><b>Why:</b> ${richText(c.explanation)}${visualsFor(c,'expl')}</div>` : '';
-    return control + exp;
-  }
-  function sheetQuizBadgeHTML(idx){
-    const ans = sheetQuiz[idx];
-    return (ans && ans.grade)
+    const badge = (ans && ans.grade)
       ? `<span class="sheet-progress ${ans.grade==='good'?'good':'hard'}">${ans.grade==='good'?'Correct':'Missed'}</span>` : '';
-  }
-  /* Rebuild exactly one quiz row (deterministic visual ids keep VISUAL_REG from
-     growing), then typeset math and draw graphs for THAT ROW ONLY. */
-  function patchSheetQuizRow(idx){
-    const rowsEl = $('sheetRows');
-    const rowEl = rowsEl && rowsEl.querySelector(`.sq-row[data-card-idx="${idx}"]`);
-    if(!rowEl){ renderStudySheetRows(); return; }
-    const c = activeDeck.cards[idx];
-    visualScope = idx;                       // stable ids: s<idx>:<key>:<n>
-    const inner = sheetQuizControlHTML(c, idx);
-    visualScope = null;
-    const ctl = rowEl.querySelector('.sq-control');
-    if(ctl) ctl.innerHTML = inner;
-    patchSheetQuizBadge(rowEl, idx);
-    renderMath(rowEl);
-    mountVisualsIn(rowEl);
-  }
-  /* An MCQ answer changes classes + badge + the "Why" block — no row rebuild, no
-     KaTeX re-typeset of the whole sheet, no canvas redraw. Hot path on mobile. */
-  function patchSheetQuizMcq(idx){
-    const rowsEl = $('sheetRows');
-    const rowEl = rowsEl && rowsEl.querySelector(`.sq-row[data-card-idx="${idx}"]`);
-    if(!rowEl){ renderStudySheetRows(); return; }
-    const c = activeDeck.cards[idx];
-    const ans = sheetQuiz[idx] || {};
-    const pick = (typeof ans.pick === 'number') ? ans.pick : -1;
-    const graded = !!ans.grade;
-    rowEl.querySelectorAll('.sq-opt').forEach((btn) => {
-      const oi = parseInt(String(btn.dataset.sqOpt).split(':')[1], 10);
-      const isCorrect = (oi === c.answer);
-      btn.classList.remove('correct','wrong','dim','locked');
-      if(graded){
-        if(isCorrect) btn.classList.add('correct');
-        else if(oi === pick) btn.classList.add('wrong');
-        else btn.classList.add('dim');
-        btn.classList.add('locked');
-        btn.disabled = true;
-      }
-    });
-    patchSheetQuizBadge(rowEl, idx);
-    // the explanation only appears once the row is graded
-    const ctl = rowEl.querySelector('.sq-control');
-    if(ctl){
-      const wantExp = !!(graded && c.explanation);
-      const haveExp = !!ctl.querySelector('.sq-exp');
-      if(wantExp && !haveExp){
-        visualScope = idx;
-        const expHTML = `<div class="sq-exp"><b>Why:</b> ${richText(c.explanation)}${visualsFor(c,'expl')}</div>`;
-        visualScope = null;
-        ctl.insertAdjacentHTML('beforeend', expHTML);
-        const expEl = ctl.querySelector('.sq-exp');
-        if(expEl){ renderMath(expEl); mountVisualsIn(expEl); }
-      } else if(!wantExp && haveExp){
-        ctl.querySelector('.sq-exp').remove();
-      }
-    }
-  }
-  function patchSheetQuizBadge(rowEl, idx){
-    const top = rowEl.querySelector('.sheet-row-top');
-    if(!top) return;
-    const b = top.querySelector('.sheet-progress');
-    const badge = sheetQuizBadgeHTML(idx);
-    if(badge){
-      if(b) b.outerHTML = badge;
-      else top.insertAdjacentHTML('beforeend', badge);
-    } else if(b){ b.remove(); }
+
+    return `
+      <div class="sq-row" data-idx="${idx}">
+        <div class="sheet-row-top">
+          <span class="sheet-num">#${String(idx+1).padStart(2,'0')}</span>
+          ${tag}
+          <span class="sheet-type">${c.type === 'mcq' ? 'MCQ' : 'Basic'}</span>
+          ${badge}
+        </div>
+        <div class="sq-q">${richText(qText)}</div>
+        ${qVisuals}
+        ${control}
+        ${exp}
+      </div>`;
   }
   /* Quiz rows count as real study: the answer is written to the deck's progress
      (and therefore to the cloud), so mastery, the review-mistakes count and the
@@ -2837,41 +2683,25 @@
   function bindSheetQuizClicks(rowsEl){
     rowsEl.onclick = (e) => {
       const optBtn = e.target.closest('[data-sq-opt]');
-      if(optBtn && !optBtn.disabled && !optBtn.classList.contains('locked')){
+      if(optBtn && !optBtn.disabled){
         const parts = optBtn.dataset.sqOpt.split(':');
         const i = parseInt(parts[0],10), oi = parseInt(parts[1],10);
         const card = activeDeck.cards[i];
-        if(!card) return;
         const right = (oi === card.answer);
-        const grade = right ? 'good' : 'hard';
-        sheetQuiz[i] = { grade, pick: oi };
-        /* PERF: this used to rebuild the ENTIRE sheet (all rows' HTML + KaTeX +
-           every canvas) for a single tap — ~140 ms sync on desktop and well over
-           a second on a mid-range Android phone for a 200-card deck. Now an MCQ
-           answer only flips classes on the row you tapped. */
-        if(sheetDomIsCurrent()) patchSheetQuizMcq(i);
-        else renderStudySheetRows();
-        renderSheetHud(sheetRenderedCount);
-        recordSheetQuizGrade(i, grade);
+        sheetQuiz[i] = { grade: right ? 'good' : 'hard', pick: oi };
+        rerenderQuizRow(i);
+        recordSheetQuizGrade(i, right ? 'good' : 'hard');
         return;
       }
       const rev = e.target.closest('[data-sq-reveal]');
-      if(rev){
-        const i = parseInt(rev.dataset.sqReveal,10);
-        sheetQuiz[i] = { grade:null, pick:-1 };
-        if(sheetDomIsCurrent()) patchSheetQuizRow(i);
-        else renderStudySheetRows();
-        return;
-      }
+      if(rev){ const ri = parseInt(rev.dataset.sqReveal,10); sheetQuiz[ri] = { grade:null, pick:-1 }; rerenderQuizRow(ri); return; }
       const gr = e.target.closest('[data-sq-grade]');
       if(gr){
         const parts = gr.dataset.sqGrade.split(':');
         const i = parseInt(parts[0],10);
         const grade = parts[1] === 'good' ? 'good' : 'hard';
         sheetQuiz[i] = { grade: grade, pick:-1 };
-        if(sheetDomIsCurrent()) patchSheetQuizRow(i);
-        else renderStudySheetRows();
-        renderSheetHud(sheetRenderedCount);   // re-grading must move the counts too
+        rerenderQuizRow(i);
         recordSheetQuizGrade(i, grade);
         return;
       }
@@ -2939,7 +2769,7 @@
     const tagHtml = c.tag ? `<span class="card-tag" style="background:${tagColor(c.tag)}">${escapeHtml(c.tag)}</span>` : '<span></span>';
     const indexHtml = `<span class="card-index">CARD ${String(session.pos+1).padStart(3,'0')} / ${String(session.order.length).padStart(3,'0')}</span>`;
     // Legacy card-level visuals (svg/chart/plot) apply to the question side.
-    const legacyVis = svgHtml(c.svg) + visualHtml(c.chart || c.plot);
+    const legacyVis = svgHtml(c.svg) + imgHtml(c.img || c.image) + visualHtml(c.chart || c.plot);
 
     if(c.type === 'mcq'){
       const alreadyAnswered = session.mcqAnswers[idx] !== undefined;
@@ -3165,7 +2995,7 @@
     if(c.explanation){
       explanationHTML = '<div class="explanation"><span class="exp-label">Explanation</span><div>' + richText(c.explanation) + visualsFor(c,'expl') + '</div></div>';
     }
-    const legacyVisBack = svgHtml(c.svg) + visualHtml(c.chart || c.plot);
+    const legacyVisBack = svgHtml(c.svg) + imgHtml(c.img || c.image) + visualHtml(c.chart || c.plot);
     const tagHtml2 = c.tag ? '<span class="card-tag" style="background:' + tagColor(c.tag) + '">' + escapeHtml(c.tag) + '</span>' : '<span></span>';
     const indexHtml2 = '<span class="card-index">CARD ' + String(session.pos+1).padStart(3,'0') + ' / ' + String(session.order.length).padStart(3,'0') + '</span>';
     faceBack.innerHTML = `
@@ -4060,5 +3890,5 @@
 
 })();
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5b810a89b9040db',t:'MTc5NDg0ODU2NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5b810a89b9040db',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
